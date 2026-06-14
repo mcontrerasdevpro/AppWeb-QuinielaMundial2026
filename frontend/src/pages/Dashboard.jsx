@@ -3,39 +3,35 @@ import MatchFixture from '../components/MatchFixture.jsx';
 import Leaderboard from '../components/Leaderboard.jsx';
 import Stats from '../components/Stats.jsx';
 
-export default function Dashboard({ onLogout }) {
-    const [activeTab, setActiveTab] = useState('partidos'); // partidos, ranking, estadisticas
+export default function Dashboard({ onLogout, userSession }) {
+  const [activeTab, setActiveTab] = useState('partidos');
 
-    return (
-        <div className="w-100">
-
-            {/* CABECERA INTERNA DEL DASHBOARD CON BOTÓN DE SALIR */}
-            <div className="d-flex justify-content-between align-items-center bg-dark bg-opacity-50 p-3 rounded-3 border border-secondary border-opacity-20 mb-3">
-                <div className="d-flex align-items-center gap-2">
-                    <span className="fs-4">🏆</span>
-                    <span className="fw-bold text-success font-monospace">HINCHA ACTIVO</span>
-                </div>
-
-                {/* Botón ampliado a tamaño estándar mediano */}
-                <button
-                    onClick={onLogout}
-                    className="btn btn-danger btn-md d-flex align-items-center gap-2 fw-bold text-uppercase px-3 py-2 shadow-sm"
-                >
-                    <span>🔓</span> Salir
-                </button>
+  return (
+    <div className="w-100">
+      
+      <div className="d-flex justify-content-between align-items-center bg-dark bg-opacity-50 p-3 rounded-3 border border-secondary border-opacity-20 mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <span className="fs-4">🏆</span>
+          {/* Mostramos el apodo real del participante en la cabecera */}
+          <span className="fw-bold text-success font-monospace">HINCHA: {userSession?.nombre?.toUpperCase()}</span>
+        </div>
+        
+        <button onClick={onLogout} className="btn btn-danger btn-md d-flex align-items-center gap-2 fw-bold text-uppercase px-3 py-2 shadow-sm">
+          <span>🔓</span> Salir
+        </button>
+      </div>
+      
+      <div className="mb-4" style={{ minHeight: '380px' }}>
+        {activeTab === 'partidos' && (
+          <div>
+            <div className="text-center bg-secondary bg-opacity-10 p-3 rounded-3 border border-secondary border-opacity-50">
+              <h6 className="text-success fw-bold mb-1">📅 Mis Pronósticos</h6>
+              <p className="small text-muted mb-0">Ajusta tus goles antes del inicio de cada partido.</p>
             </div>
-
-            {/* Contenedor de las pestañas activas */}
-            <div className="mb-4" style={{ minHeight: '380px' }}>
-                {activeTab === 'partidos' && (
-                    <div>
-                        <div className="text-center bg-secondary bg-opacity-10 p-3 rounded-3 border border-secondary border-opacity-50">
-                            <h6 className="text-success fw-bold mb-1">📅 Mis Pronósticos</h6>
-                            <p className="small text-muted mb-0">Ajusta tus goles antes del inicio de cada partido.</p>
-                        </div>
-                        <MatchFixture />
-                    </div>
-                )}
+            {/* 2. Inyectamos el ID de usuario activo en las tarjetas de la quiniela */}
+            <MatchFixture usuarioId={userSession?.id} />
+          </div>
+        )}
 
                 {activeTab === 'ranking' && (
                     <div>

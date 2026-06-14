@@ -4,34 +4,30 @@ import Dashboard from './pages/Dashboard.jsx';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userSession, setUserSession] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
       window.history.pushState(null, null, window.location.href);
-      
       const handlePopState = () => {
         window.history.pushState(null, null, window.location.href);
         alert("🔒 Sesión cerrada. Debes iniciar sesión para volver a entrar al estadio.");
       };
-
       window.addEventListener('popstate', handlePopState);
-      
-      return () => {
-        window.removeEventListener('popstate', handlePopState);
-      };
+      return () => window.removeEventListener('popstate', handlePopState);
     }
   }, [isAuthenticated]);
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (userData) => {
+    setUserSession(userData);
     setIsAuthenticated(true);
     window.history.pushState(null, null, window.location.href);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    
+    setUserSession(null); 
     window.history.replaceState(null, null, window.location.href);
-    
     alert("👋 Saliste del estadio. ¡Vuelve pronto!");
   };
 
@@ -52,7 +48,7 @@ function App() {
             {!isAuthenticated ? (
               <Landing onRegisterSuccess={handleLoginSuccess} />
             ) : (
-              <Dashboard onLogout={handleLogout} />
+              <Dashboard onLogout={handleLogout} userSession={userSession} />
             )}
           </div>
         </div>

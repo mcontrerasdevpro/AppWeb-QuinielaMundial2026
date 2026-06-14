@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://probable-sniffle-f103b2v11qu6w-8000.app.github.dev/api';
+const API_URL = 'https://probable-sniffle-jjp5g57gvqr9f9pp-8000.app.github.dev';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -12,6 +12,7 @@ const api = axios.create({
 export const authService = {
   registrar: async (nombre, email, password) => {
     try {
+      // CORREGIDO: Ruta completa sin mutilaciones
       const response = await api.post('/auth/register', {
         nombre,
         email,
@@ -26,6 +27,7 @@ export const authService = {
 
   login: async (email, password) => {
     try {
+      // CORREGIDO: Ruta completa sin mutilaciones
       const response = await api.post('/auth/login', {
         email,
         password,
@@ -41,6 +43,7 @@ export const authService = {
 export const matchService = {
   obtenerPartidos: async () => {
     try {
+      // CORREGIDO: Ruta completa
       const response = await api.get('/matches');
       return response.data;
     } catch (error) {
@@ -52,6 +55,7 @@ export const matchService = {
 export const predictionService = {
   guardar: async (partidoId, golesLocal, golesVisitante) => {
     try {
+      // CORREGIDO: Ruta completa
       const response = await api.post('/predictions', {
         partido_id: partidoId,
         goles_local_pronostico: golesLocal,

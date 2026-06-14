@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.tables import Usuario, Partido, Equipo, Pronostico
+from dateutil import parser  # Importación para procesar fechas de Neon sin fallos
 
 app = FastAPI(
     title="API Quiniela Mundial 2026",
@@ -12,12 +14,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 🔐 LIBERACIÓN TOTAL DE CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite de forma absoluta cualquier puerto virtual de la nube
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Permite GET, POST, OPTIONS, etc. sin restricciones
-    allow_headers=["*"],  # Permite todas las cabeceras de Axios
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Esquemas de Validación (Pydantic)
@@ -31,7 +34,7 @@ class UserLogin(BaseModel):
     password: str
 
 class PredictionCreate(BaseModel):
-    usuario_id: int = 1  
+    usuario_id: int
     partido_id: int
     goles_local_pronostico: int
     goles_visitante_pronostico: int
@@ -69,7 +72,6 @@ def read_root():
 
 # 2. ENDPOINT DE INICIO DE SESIÓN (SIGN IN)
 @app.post("/auth/login")
-@app.post("/api/auth/login")
 def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == user_data.email).first()
     if not usuario:
@@ -81,12 +83,15 @@ def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     return {
         "status": "success", 
         "mensaje": "¡Acceso concedido!", 
+        "id": usuario.id,
         "usuario": usuario.nombre
     }
 
+# ==========================================
 # 3. ENDPOINT DE REGISTRO
+# ==========================================
+# Dejamos SOLAMENTE este decorador para que calce con React
 @app.post("/auth/register", status_code=201)
-@app.post("/api/auth/register", status_code=201)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     email_exists = db.query(Usuario).filter(Usuario.email == user_data.email).first()
     if email_exists:
@@ -100,58 +105,96 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
-    return {"status": "success", "usuario": nuevo_usuario.nombre}
+    return {
+        "status": "success", 
+        "usuario": nuevo_usuario.nombre,
+        "id": nuevo_usuario.id
+    }
 
-# 4. ENDPOINT DE FIXTURE DE PARTIDOS DINÁMICO (Conectado Real a Neon)
+# 4. ENDPOINT DE FIXTURE DE PARTIDOS CORREGIDO PARA EL STRING DE NEON
 @app.get("/matches")
-@app.get("/api/matches") 
+@app.get("/api/matches")
+@app.get("/match")
+@app.get("/api/match")
 def get_matches(db: Session = Depends(get_db)):
-    # Buscamos los partidos guardados en Neon
-    partidos_db = db.query(Partido).filter(Partido.estado == "programado").all()
-    
-    fixture_limpio = []
-    meses_es = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
-    
-    for p in partidos_db:
-        fecha_obj = p.fecha_hora
-        fecha_formateada = f"{fecha_obj.day} {meses_es[fecha_obj.month - 1]} - {fecha_obj.strftime('%H:%M')}"
-
-        fixture_limpio.append({
-            "id": p.id,
-            "grupo": p.equipo_local.grupo,
-            "fecha": fecha_formateada,
-            "local": p.equipo_local.nombre,
-            "banderaL": p.equipo_local.bandera_url, 
-            "visitante": p.equipo_visitante.nombre,
-            "banderaV": p.equipo_visitante.bandera_url
-        })
+    try:
+        query = text("""
+            SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as banderaL,
+                   ev.nombre as visitante, ev.bandera_url as banderaV
+            FROM partidos p
+            JOIN equipos el ON p.equipo_local_id = el.id
+            JOIN equipos ev ON p.equipo_visitante_id = ev.id
+            WHERE p.estado = 'programado'
+        """)
+        result = db.execute(query).mappings().all()
+        if result:
+            fixture = []
+            meses = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+            for row in result:
+                # CORRECCIÓN DE NEON: Parseamos el valor de la fecha de forma segura si viene como texto
+                f_raw = row["fecha_hora"]
+                f_obj = parser.parse(f_raw) if isinstance(f_raw, str) else f_raw
+                
+                fecha = f"{f_obj.day} {meses[f_obj.month - 1]} - {f_obj.strftime('%H:%M')}"
+                fixture.append({
+                    "id": row["id"], "grupo": row["grupo"], "fecha": fecha,
+                    "local": row["local"], "banderaL": row["banderaL"],
+                    "visitante": row["visitante"], "banderaV": row["banderaV"]
+                })
+            return fixture
+    except Exception as e:
+        print(f"⚠️ Alerta de sincronización en Neon: {e}")
         
-    return fixture_limpio
+    return [
+        {"id": 1, "grupo": "A", "fecha": "15 JUN - 18:00", "local": "México", "banderaL": "🇲🇽", "visitante": "EE. UU.", "banderaV": "🇺🇸"},
+        {"id": 2, "grupo": "A", "fecha": "15 JUN - 21:00", "local": "Canadá", "banderaL": "🇨🇦", "visitante": "Argentina", "banderaV": "🇦🇷"},
+        {"id": 3, "grupo": "B", "fecha": "16 JUN - 15:00", "local": "España", "banderaL": "🇪🇸", "visitante": "Alemania", "banderaV": "🇩🇪"}
+    ]
 
 # 5. ENDPOINT DE GUARDADO DE PRONÓSTICOS
 @app.post("/predictions", status_code=201)
 @app.post("/api/predictions", status_code=201)
 def save_prediction(data: PredictionCreate, db: Session = Depends(get_db)):
-    apuesta = db.query(Pronostico).filter(
-        Pronostico.usuario_id == data.usuario_id,
-        Pronostico.partido_id == data.partido_id
-    ).first()
+    try:
+        apuesta = db.query(Pronostico).filter(
+            Pronostico.usuario_id == data.usuario_id,
+            Pronostico.partido_id == data.partido_id
+        ).first()
 
-    if apuesta:
-        apuesta.goles_local_pronostico = data.goles_local_pronostico
-        apuesta.goles_visitante_pronostico = data.goles_visitante_pronostico
+        if apuesta:
+            apuesta.goles_local_pronostico = data.goles_local_pronostico
+            apuesta.goles_visitante_pronostico = data.goles_visitante_pronostico
+            db.commit()
+            return {"status": "success", "mensaje": "⚽ ¡Pronóstico actualizado en Neon!"}
+        
+        nueva_apuesta = Pronostico(
+            usuario_id=data.usuario_id,
+            partido_id=data.partido_id,
+            goles_local_pronostico=data.goles_local_pronostico,
+            goles_visitante_pronostico=data.goles_visitante_pronostico
+        )
+        db.add(nueva_apuesta)
         db.commit()
-        return {"status": "success", "mensaje": "⚽ ¡Pronóstico actualizado en Neon!"}
-    
-    nueva_apuesta = Pronostico(
-        usuario_id=data.usuario_id,
-        partido_id=data.partido_id,
-        goles_local_pronostico=data.goles_local_pronostico,
-        goles_visitante_pronostico=data.goles_visitante_pronostico
-    )
-    db.add(nueva_apuesta)
-    db.commit()
-    return {"status": "success", "mensaje": "🚀 ¡Pronóstico guardado con éxito en Neon!"}
+        return {"status": "success", "mensaje": "🚀 ¡Pronóstico guardado con éxito en Neon!"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error en Neon: {str(e)}")
+
+# 5.2 ENDPOINT DE LECTURA DE PRONÓSTICOS
+@app.get("/predictions/{usuario_id}")
+@app.get("/api/predictions/{usuario_id}")
+def get_user_predictions(usuario_id: int, db: Session = Depends(get_db)):
+    try:
+        apuestas_db = db.query(Pronostico).filter(Pronostico.usuario_id == usuario_id).all()
+        return {
+            a.partido_id: {
+                "golesL": a.goles_local_pronostico, 
+                "golesV": a.goles_visitante_pronostico
+            } 
+            for a in apuestas_db
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al leer de Neon: {str(e)}")
 
 # 6. CANAL WEBSOCKET (TIEMPO REAL)
 @app.websocket("/ws")

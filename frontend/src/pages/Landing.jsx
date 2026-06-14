@@ -3,7 +3,7 @@ import { authService } from '../services/api.js';
 
 export default function Landing({ onRegisterSuccess }) {
   const [showForm, setShowForm] = useState(false);
-  const [modo, setModo] = useState('login'); // Controla si es 'login' o 'registro'
+  const [modo, setModo] = useState('login'); 
   const [cargando, setCargando] = useState(false);
   
   const [formData, setFormData] = useState({ 
@@ -33,21 +33,22 @@ export default function Landing({ onRegisterSuccess }) {
 
       setCargando(true);
       try {
-        await authService.registrar(formData.nombre, formData.email, formData.password);
+        const respuestaRegistro = await authService.registrar(formData.nombre, formData.email, formData.password);
         alert("🚀 ¡Registro exitoso en la base de datos!");
-        onRegisterSuccess();
+        
+        onRegisterSuccess({ id: respuestaRegistro.id, nombre: respuestaRegistro.usuario });
       } catch (error) {
         alert(`❌ Error al registrar: ${error.message}`);
       } finally {
         setCargando(false);
       }
     } else {
-      // Flujo de Inicio de Sesión para usuarios ya registrados
       setCargando(true);
       try {
-        await authService.login(formData.email, formData.password);
+        const respuestaLogin = await authService.login(formData.email, formData.password);
         alert("⚽ ¡Acceso concedido! Bienvenido de vuelta al estadio.");
-        onRegisterSuccess();
+        
+        onRegisterSuccess({ id: respuestaLogin.id, nombre: respuestaLogin.usuario });
       } catch (error) {
         alert(`❌ Error al acceder: ${error.message}`);
       } finally {
