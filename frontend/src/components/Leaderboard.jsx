@@ -1,23 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api.js';
 
-export default function Leaderboard() {
+export default function Leaderboard({ usuarioLogueadoId }) {
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
 
+  const obtenerRanking = async () => {
+    try {
+      const respuesta = await api.get('/ranking');
+      setUsuarios(respuesta.data);
+    } catch (error) {
+      console.log("Error al cargar la tabla de posiciones.");
+    } finally {
+      setCargando(false);
+    }
+  };
+
   useEffect(() => {
-    const obtenerRanking = async () => {
-      try {
-        const respuesta = await api.get('/ranking');
-        setUsuarios(respuesta.data);
-      } catch (error) {
-        console.log("Error al cargar la tabla de posiciones.");
-      } finally {
-        setCargando(false);
-      }
-    };
     obtenerRanking();
   }, []);
+
+  // FUNCIÓN PARA GOLPEAR EL ENDPOINT DE BORRADO DE NEON
+  const eliminarUsuario = async (id, nombre) => {
+    const confirmar = window.confirm(`⚠️ ¿Estás seguro de que deseas eliminar permanentemente a "${nombre.toUpperCase()}" de la Quiniela?`);
+    if (!confirmar) return;
+
+    try {
+      await api.delete(`/usuarios/${id}`);
+      alert("🗑️ ¡Usuario borrado de Neon con éxito!");
+      obtenerRanking(); // Recargamos la tabla al instante
+    } catch (error) {
+      alert(`❌ Error al eliminar: ${error.message}`);
+    }
+  };
 
   if (cargando) {
     return <div className="text-center py-4 text-secondary small">🥇 Calculando posiciones globales...</div>;
@@ -32,6 +47,7 @@ export default function Leaderboard() {
               <th className="py-2">POS</th>
               <th className="py-2 text-start">HINCHA</th>
               <th className="py-2">PTS</th>
+              <th className="py-2">ACCION</th>
             </tr>
           </thead>
           <tbody>
@@ -41,11 +57,27 @@ export default function Leaderboard() {
               if (index === 1) medalla = "🥈";
               if (index === 2) medalla = "🥉";
 
+              const esElMismo = user.id === usuarioLogueadoId;
+
               return (
                 <tr key={user.id} className="border-bottom border-secondary border-opacity-10">
                   <td className="fw-bold text-warning py-2">{medalla}</td>
                   <td className="text-start fw-bold text-white py-2 text-uppercase">{user.nombre}</td>
                   <td className="fw-black text-success py-2">{user.puntos}</td>
+                   <td className="py-1">
+                    {esElMismo ? (
+                      <button
+                        type="button"
+                        onClick={() => eliminarUsuario(user.id, user.nombre)}
+                        className="btn btn-xs btn-danger px-2 py-1 fw-bold font-monospace shadow-sm"
+                        style={{ fontSize: '10px', letterSpacing: '0.2px' }}
+                      >
+                        ❌ DARME DE BAJA
+                      </button>
+                    ) : (
+                      <span className="text-muted opacity-25 font-monospace" style={{ fontSize: '11px' }}>•</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}

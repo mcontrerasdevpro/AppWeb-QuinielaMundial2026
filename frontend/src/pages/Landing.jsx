@@ -81,13 +81,7 @@ export default function Landing({ onRegisterSuccess }) {
           <p className="small text-success fw-bold text-uppercase mt-3 tracking-wide">¡HACER CLIC PARA JUGAR!</p>
         </div>
       ) : (
-        <div className="position-relative p-1">
-          <button 
-            type="button" 
-            className="btn-close btn-close-white position-absolute top-0 end-0 m-2 small"
-            onClick={() => setShowForm(false)}
-            style={{ zIndex: '20' }}
-          ></button>
+        <div className="position-relative p-1">          
 
           {/* BOTONERA SELECTORA DE MODO DE ACCESO */}
           <div className="d-flex justify-content-center mb-3 mt-2">
@@ -109,39 +103,81 @@ export default function Landing({ onRegisterSuccess }) {
             </div>
           </div>
           
-          <form onSubmit={handleSubmit} className="d-flex flex-column gap-2">
+          <form onSubmit={handleSubmit} className="d-flex flex-column gap-2" autoComplete="off">
             
             {/* Campo exclusivo de Registro */}
             {modo === 'registro' && (
               <div className="mb-2">
                 <label className="text-success fw-bold mb-1" style={{ fontSize: '11px' }}>Apodo de Hincha</label>
-                <input type="text" name="nombre" required placeholder="Ej: ElReyDelGol" className="form-control form-control-sm bg-dark text-white border-secondary" onChange={handleChange}/>
+                <input 
+                  type="text" 
+                  name="nombre" 
+                  required 
+                  placeholder="Ej: ElReyDelGol" 
+                  className="form-control form-control-sm bg-dark text-white border-secondary" 
+                  onChange={handleChange}
+                  autoComplete="off"
+                />
               </div>
             )}
 
             <div className="mb-2">
               <label className="text-success fw-bold mb-1" style={{ fontSize: '11px' }}>Correo Electrónico</label>
-              <input type="email" name="email" required placeholder="hincha@mundial.com" className="form-control form-control-sm bg-dark text-white border-secondary" onChange={handleChange}/>
+              <input 
+                type="email" 
+                name="email" 
+                required 
+                placeholder="hincha@mundial.com" 
+                className="form-control form-control-sm bg-dark text-white border-secondary" 
+                onChange={handleChange}
+                autoComplete="off"
+              />
             </div>
 
             {/* Campo exclusivo de Registro */}
             {modo === 'registro' && (
               <div className="mb-2">
                 <label className="text-success fw-bold mb-1" style={{ fontSize: '11px' }}>Confirmar Correo</label>
-                <input type="email" name="confirmEmail" required placeholder="hincha@mundial.com" className="form-control form-control-sm bg-dark text-white border-secondary" onChange={handleChange}/>
+                <input 
+                  type="email" 
+                  name="confirmEmail" 
+                  required 
+                  placeholder="hincha@mundial.com" 
+                  className="form-control form-control-sm bg-dark text-white border-secondary" 
+                  onChange={handleChange}
+                  autoComplete="off"
+                />
               </div>
             )}
 
             <div className="mb-2">
               <label className="text-success fw-bold mb-1" style={{ fontSize: '11px' }}>Contraseña</label>
-              <input type="password" name="password" required placeholder="••••••••" className="form-control form-control-sm bg-dark text-white border-secondary" onChange={handleChange}/>
+              <input 
+                type="text" 
+                name="password" 
+                required 
+                placeholder="••••••••" 
+                className="form-control form-control-sm bg-dark text-white border-secondary" 
+                onChange={handleChange}
+                autoComplete="off"
+                style={{ WebkitTextSecurity: 'disc' }}
+              />
             </div>
 
-            {/* Campo exclusivo de Registro */}
+            {/* Campo exclusivo de Registro (Aplica el mismo truco) */}
             {modo === 'registro' && (
               <div className="mb-3">
                 <label className="text-success fw-bold mb-1" style={{ fontSize: '11px' }}>Confirmar Contraseña</label>
-                <input type="password" name="confirmPassword" required placeholder="••••••••" className="form-control form-control-sm bg-dark text-white border-secondary" onChange={handleChange}/>
+                <input 
+                  type="text" 
+                  name="confirmPassword" 
+                  required 
+                  placeholder="••••••••" 
+                  className="form-control form-control-sm bg-dark text-white border-secondary" 
+                  onChange={handleChange}
+                  autoComplete="off"
+                  style={{ WebkitTextSecurity: 'disc' }}
+                />
               </div>
             )}
 

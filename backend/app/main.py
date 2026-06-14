@@ -6,7 +6,8 @@ from typing import List
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.tables import Usuario, Partido, Equipo, Pronostico
-from dateutil import parser 
+from dateutil import parser
+import datetime 
 
 app = FastAPI(
     title="API Quiniela Mundial 2026",
@@ -155,6 +156,54 @@ def get_matches(usuario_id: int = 1, dia: int = 15, db: Session = Depends(get_db
         
     return []
 
+# ==========================================
+# 4.2 ENDPOINT DE PARTIDOS TERMINADOS (NEON)
+# ==========================================
+@app.get("/matches/finished")
+@app.get("/api/matches/finished")
+def get_finished_matches(db: Session = Depends(get_db)):
+    try:
+        # Consulta SQL limpia con las columnas reales del disco
+        query = text("""
+            SELECT p.id, el.grupo, p.fecha_hora, 
+                   el.nombre as local, el.bandera_url as banderaL, p.goles_local,
+                   ev.nombre as visitante, ev.bandera_url as banderaV, p.goles_visitante
+            FROM partidos p
+            JOIN equipos el ON p.equipo_local_id = el.id
+            JOIN equipos ev ON p.equipo_visitante_id = ev.id
+            WHERE p.estado = 'finalizado'
+            ORDER BY p.fecha_hora DESC
+        """)
+        result = db.execute(query).mappings().all()
+        
+        fixture_terminado = []
+        meses = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+        
+        if result:
+            for row in result:
+                f_raw = row.get("fecha_hora") or datetime.datetime.now()
+                f_obj = parser.parse(f_raw) if isinstance(f_raw, str) else f_raw
+                
+                fecha_formateada = f"{f_obj.day} {meses[f_obj.month - 1]} - {f_obj.strftime('%H:%M')}"
+                
+                fixture_terminado.append({
+                    "id": row["id"], 
+                    "grupo": row["grupo"], 
+                    "fecha": fecha_formateada,
+                    "local": row["local"], 
+                    "banderaL": row["banderaL"], 
+                    "golesL": row.get("goles_local", 0),  
+                    "visitante": row["visitante"], 
+                    "banderaV": row["banderaV"], 
+                    "golesV": row.get("goles_visitante", 0)  
+                })
+            return fixture_terminado
+            
+    except Exception as e:
+        print(f"❌ Error crítico en partidos terminados: {e}")
+        
+    return []
+
 # 5. ENDPOINT DE GUARDADO DE PRONÓSTICOS
 @app.post("/predictions", status_code=201)
 @app.post("/api/predictions", status_code=201)
@@ -213,22 +262,30 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception:
         manager.disconnect(websocket)
 
+# ==========================================
+# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN DE MARCADORES (CORREGIDO)
+# ==========================================
 @app.post("/matches/{partido_id}/finish")
 @app.post("/api/matches/{partido_id}/finish")
 def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: int, db: Session = Depends(get_db)):
     try:
+        # 1. Buscamos el partido y actualizamos sus goles con los nombres de columna reales
         partido = db.query(Partido).filter(Partido.id == partido_id).first()
         if not partido:
             raise HTTPException(status_code=404, detail="Partido no encontrado.")
         
         partido.estado = "finalizado"
+        partido.goles_local = goles_local_real       # <-- CORREGIDO: Nombre de columna real
+        partido.goles_visitante = goles_visitante_real # <-- CORREGIDO: Nombre de columna real
         db.commit()
 
+        # 2. Procesamos los pronósticos de los hinchas
         pronosticos = db.query(Pronostico).filter(Pronostico.partido_id == partido_id).all()
 
         for p in pronosticos:
             puntos_ganados = 0
             
+            # Comparamos contra las columnas de la porra y el resultado real corregido
             if p.goles_local_pronostico == goles_local_real and p.goles_visitante_pronostico == goles_visitante_real:
                 puntos_ganados = 3
             else:
@@ -247,11 +304,12 @@ def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: i
                 usuario.puntos += puntos_ganados
 
         db.commit()
-        return {"status": "success", "mensaje": f"🏁 ¡Partido {partido_id} finalizado! Marcador real: {goles_local_real}-{goles_visitante_real}. Tabla de posiciones actualizada."}
+        return {"status": "success", "mensaje": f"🏁 ¡Partido {partido_id} finalizado con marcador {goles_local_real}-{goles_visitante_real}!"}
         
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error en el motor de puntos: {str(e)}")
+        print(f"❌ Error en finish_match: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
 # 7.2 ENDPOINT PARA EXPONER EL RANKING EN VIVO
@@ -260,10 +318,21 @@ def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: i
 @app.get("/api/ranking")
 def get_ranking(db: Session = Depends(get_db)):
     try:
-        query = text("SELECT id, nombre, COALESCE(puntos, 0) as puntos FROM usuarios ORDER BY puntos DESC, nombre ASC")
-        result = db.execute(query).mappings().all()
-        return list(result)
+        usuarios_db = db.query(Usuario).all()
+        
+        ranking_final = []
+        for u in usuarios_db:
+            ranking_final.append({
+                "id": u.id,
+                "nombre": u.nombre,
+                "puntos": u.puntos if (hasattr(u, 'puntos') and u.puntos is not None) else 0
+            })
+            
+        ranking_final.sort(key=lambda x: x["puntos"], reverse=True)
+        return ranking_final
+        
     except Exception as e:
+        print(f"⚠️ Alerta en ranking ORM: {e}")
         return [{"id": 1, "nombre": "Survi", "puntos": 0}]
     
 # ==========================================
@@ -303,3 +372,24 @@ def get_global_stats(db: Session = Depends(get_db)):
     except Exception as e:
         print(f"⚠️ Alerta en Stats: {e}")
         return {"total_predictions": 0, "average_goals": 0.0, "tendencies": {"local": 33, "draw": 34, "away": 33}}
+    
+# ==========================================
+# 9. ENDPOINT PARA ELIMINAR UN USUARIO (NEON)
+# ==========================================
+@app.delete("/usuarios/{usuario_id}")
+@app.delete("/api/usuarios/{usuario_id}")
+def delete_user(usuario_id: int, db: Session = Depends(get_db)):
+    try:
+        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+        
+        db.execute(text("DELETE FROM pronosticos WHERE usuario_id = :uid"), {"uid": usuario_id})
+        
+        db.delete(usuario)
+        db.commit()
+        return {"status": "success", "mensaje": "🗑️ ¡Usuario eliminado de la base de datos con éxito!"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al borrar: {str(e)}")
