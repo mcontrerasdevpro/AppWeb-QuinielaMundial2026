@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: api-quiniela-mundial
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_Rnbygl6mZI4W@ep-nameless-night-a2sypmdx-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
