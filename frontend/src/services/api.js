@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://probable-sniffle-jjp5g57gvqr9f9pp-8000.app.github.dev/api';
+const API_URL = 'https://probable-sniffle-f103b2v11qu6w-8000.app.github.dev/api';
 
 const api = axios.create({
   baseURL: API_URL,

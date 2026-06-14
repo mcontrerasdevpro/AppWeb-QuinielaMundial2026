@@ -4,10 +4,26 @@ import Leaderboard from '../components/Leaderboard.jsx';
 import Stats from '../components/Stats.jsx';
 
 export default function Dashboard({ onLogout }) {
-    const [activeTab, setActiveTab] = useState('partidos');
+    const [activeTab, setActiveTab] = useState('partidos'); // partidos, ranking, estadisticas
 
     return (
         <div className="w-100">
+
+            {/* CABECERA INTERNA DEL DASHBOARD CON BOTÓN DE SALIR */}
+            <div className="d-flex justify-content-between align-items-center bg-dark bg-opacity-50 p-3 rounded-3 border border-secondary border-opacity-20 mb-3">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🏆</span>
+                    <span className="fw-bold text-success font-monospace">HINCHA ACTIVO</span>
+                </div>
+
+                {/* Botón ampliado a tamaño estándar mediano */}
+                <button
+                    onClick={onLogout}
+                    className="btn btn-danger btn-md d-flex align-items-center gap-2 fw-bold text-uppercase px-3 py-2 shadow-sm"
+                >
+                    <span>🔓</span> Salir
+                </button>
+            </div>
 
             {/* Contenedor de las pestañas activas */}
             <div className="mb-4" style={{ minHeight: '380px' }}>
@@ -66,13 +82,6 @@ export default function Dashboard({ onLogout }) {
                     <span style={{ fontSize: '10px' }}>Stats</span>
                 </button>
             </nav>
-
-            {/* Salida de la app */}
-            <div className="text-center mt-3">
-                <button onClick={onLogout} className="btn btn-sm btn-link text-muted text-decoration-underline small" style={{ fontSize: '11px' }}>
-                    Cerrar Sesión de Prueba
-                </button>
-            </div>
 
         </div>
     );

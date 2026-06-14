@@ -1,12 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import get_db
-from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.models.tables import Usuario
-from pydantic import BaseModel, EmailStr
-from fastapi import WebSocket, WebSocketDisconnect
 from typing import List
+from pydantic import BaseModel
+from app.database import get_db
+from app.models.tables import Usuario, Partido, Equipo, Pronostico
 
 app = FastAPI(
     title="API Quiniela Mundial 2026",
@@ -16,12 +14,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Permite de forma absoluta cualquier puerto virtual de la nube
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permite GET, POST, OPTIONS, etc. sin restricciones
+    allow_headers=["*"],  # Permite todas las cabeceras de Axios
 )
 
+# Esquemas de Validación (Pydantic)
 class UserCreate(BaseModel):
     nombre: str
     email: str
@@ -31,6 +30,13 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class PredictionCreate(BaseModel):
+    usuario_id: int = 1  
+    partido_id: int
+    goles_local_pronostico: int
+    goles_visitante_pronostico: int
+
+# Gestor de WebSockets (Tiempo Real)
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -40,11 +46,15 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
         for connection in self.active_connections:
-            await connection.send_json(message)
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
 
 manager = ConnectionManager()
 
@@ -92,51 +102,36 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(nuevo_usuario)
     return {"status": "success", "usuario": nuevo_usuario.nombre}
 
-# 4. ENDPOINT DE FIXTURE DE PARTIDOS
+# 4. ENDPOINT DE FIXTURE DE PARTIDOS DINÁMICO (Conectado Real a Neon)
 @app.get("/matches")
 @app.get("/api/matches") 
-def get_matches():
-    return [
-        {
-            "id": 1,
-            "grupo": "A",
-            "fecha": "15 JUN - 18:00",
-            "local": "México",
-            "banderaL": "🇲🇽",
-            "visitante": "EE. UU.",
-            "banderaV": "🇺🇸"
-        },
-        {
-            "id": 2,
-            "grupo": "A",
-            "fecha": "15 JUN - 21:00",
-            "local": "Canadá",
-            "banderaL": "🇨🇦",
-            "visitante": "Argentina",
-            "banderaV": "🇦🇷"
-        },
-        {
-            "id": 3,
-            "grupo": "B",
-            "fecha": "16 JUN - 15:00",
-            "local": "España",
-            "banderaL": "🇪🇸",
-            "visitante": "Alemania",
-            "banderaV": "🇩🇪"
-        }
-    ]
+def get_matches(db: Session = Depends(get_db)):
+    # Buscamos los partidos guardados en Neon
+    partidos_db = db.query(Partido).filter(Partido.estado == "programado").all()
+    
+    fixture_limpio = []
+    meses_es = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+    
+    for p in partidos_db:
+        fecha_obj = p.fecha_hora
+        fecha_formateada = f"{fecha_obj.day} {meses_es[fecha_obj.month - 1]} - {fecha_obj.strftime('%H:%M')}"
 
-class PredictionCreate(BaseModel):
-    usuario_id: int = 1  
-    partido_id: int
-    goles_local_pronostico: int
-    goles_visitante_pronostico: int
+        fixture_limpio.append({
+            "id": p.id,
+            "grupo": p.equipo_local.grupo,
+            "fecha": fecha_formateada,
+            "local": p.equipo_local.nombre,
+            "banderaL": p.equipo_local.bandera_url, 
+            "visitante": p.equipo_visitante.nombre,
+            "banderaV": p.equipo_visitante.bandera_url
+        })
+        
+    return fixture_limpio
 
+# 5. ENDPOINT DE GUARDADO DE PRONÓSTICOS
 @app.post("/predictions", status_code=201)
 @app.post("/api/predictions", status_code=201)
 def save_prediction(data: PredictionCreate, db: Session = Depends(get_db)):
-    from app.models.tables import Pronostico
-    
     apuesta = db.query(Pronostico).filter(
         Pronostico.usuario_id == data.usuario_id,
         Pronostico.partido_id == data.partido_id
@@ -146,7 +141,7 @@ def save_prediction(data: PredictionCreate, db: Session = Depends(get_db)):
         apuesta.goles_local_pronostico = data.goles_local_pronostico
         apuesta.goles_visitante_pronostico = data.goles_visitante_pronostico
         db.commit()
-        return {"status": "success", "mensaje": "⚽ ¡Pronóstico actualizado en pgAdmin!"}
+        return {"status": "success", "mensaje": "⚽ ¡Pronóstico actualizado en Neon!"}
     
     nueva_apuesta = Pronostico(
         usuario_id=data.usuario_id,
@@ -156,8 +151,9 @@ def save_prediction(data: PredictionCreate, db: Session = Depends(get_db)):
     )
     db.add(nueva_apuesta)
     db.commit()
-    return {"status": "success", "mensaje": "🚀 ¡Pronóstico guardado con éxito en pgAdmin!"}
+    return {"status": "success", "mensaje": "🚀 ¡Pronóstico guardado con éxito en Neon!"}
 
+# 6. CANAL WEBSOCKET (TIEMPO REAL)
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
