@@ -71,7 +71,8 @@ def read_root():
     }
 
 # 2. ENDPOINT DE INICIO DE SESIÓN (SIGN IN)
-@app.post("/auth/login")
+@app.post("/auth/login")      # <-- ¡Asegúrate de que esta línea exacta esté aquí!
+@app.post("/api/auth/login")  # <-- ¡Asegúrate de que esta línea exacta también esté aquí!
 def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == user_data.email).first()
     if not usuario:
