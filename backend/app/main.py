@@ -91,7 +91,7 @@ def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
 # ==========================================
 @app.post("/auth/register", status_code=201)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
-    email_exists = db.query(Usuario).filter(Usuario.email == user_data.email).first()
+    email_exists = db.query(Usuario).filter(Usuario.email == user_data.email).first() 
     if email_exists:
         raise HTTPException(status_code=400, detail="El correo ya existe.")
     
@@ -269,23 +269,20 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.post("/api/matches/{partido_id}/finish")
 def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: int, db: Session = Depends(get_db)):
     try:
-        # 1. Buscamos el partido y actualizamos sus goles con los nombres de columna reales
         partido = db.query(Partido).filter(Partido.id == partido_id).first()
         if not partido:
             raise HTTPException(status_code=404, detail="Partido no encontrado.")
         
         partido.estado = "finalizado"
-        partido.goles_local = goles_local_real       # <-- CORREGIDO: Nombre de columna real
-        partido.goles_visitante = goles_visitante_real # <-- CORREGIDO: Nombre de columna real
+        partido.goles_local = goles_local_real       
+        partido.goles_visitante = goles_visitante_real 
         db.commit()
 
-        # 2. Procesamos los pronósticos de los hinchas
         pronosticos = db.query(Pronostico).filter(Pronostico.partido_id == partido_id).all()
 
         for p in pronosticos:
             puntos_ganados = 0
             
-            # Comparamos contra las columnas de la porra y el resultado real corregido
             if p.goles_local_pronostico == goles_local_real and p.goles_visitante_pronostico == goles_visitante_real:
                 puntos_ganados = 3
             else:
