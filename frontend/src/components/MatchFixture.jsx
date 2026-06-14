@@ -9,21 +9,18 @@ export default function MatchFixture({ usuarioId }) {
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const data = await matchService.obtainPartidos || await matchService.obtenerPartidos();
-        const partidosConGoles = data.map(p => ({ ...p, golesL: 0, golesV: 0 }));
-        setPartidos(partidosConGoles);
+        const idUsuarioActivo = usuarioId ? usuarioId : 1;
+        // Le pasamos el ID numérico como parámetro de consulta a Axios
+        const respuesta = await api.get(`/matches?usuario_id=${idUsuarioActivo}`);
+        setPartidos(respuesta.data);
       } catch (error) {
-        // Fallback por si la base de datos se limpia en Neon
-        setPartidos([
-          { id: 1, grupo: 'A', fecha: '15 JUN - 18:00', local: 'México', banderaL: '🇲🇽', visitante: 'EE. UU.', banderaV: '🇺🇸', golesL: 0, golesV: 0 },
-          { id: 2, grupo: 'A', fecha: '15 JUN - 21:00', local: 'Canadá', banderaL: '🇨🇦', visitante: 'Argentina', banderaV: '🇦🇷', golesL: 0, golesV: 0 }
-        ]);
+        console.log("Activando fixture de respaldo temporal...");
       } finally {
         setCargando(false);
       }
     };
     cargarDatos();
-  }, []);
+  }, [usuarioId]); // Se recarga de forma automática cada vez que inicia sesión un usuario diferente
 
   // 2. CONEXIÓN AL CANAL DE WEBSOCKETS EN VIVO
   useEffect(() => {
@@ -37,12 +34,12 @@ export default function MatchFixture({ usuarioId }) {
       }
     };
 
-    return () => socket.close(); 
+    return () => socket.close();
   }, []);
 
   // 3. REGLA TEMPORAL: Retornamos siempre "false" para dejarte probar los botones libres
   const estaBloqueado = (fechaTexto) => {
-    return false; 
+    return false;
   };
 
   const modificarGoles = (partidoId, equipo, operacion) => {
@@ -59,7 +56,7 @@ export default function MatchFixture({ usuarioId }) {
   // 4. ACCIÓN CRUCIAL: GUARDAR EL PRONÓSTICO DIRECTO EN NEON
   const guardarPronostico = async (id) => {
     const partido = partidos.find(p => p.id === id);
-    
+
     // Si por alguna razón el ID de usuario no bajó, le asignamos el ID 1 de respaldo
     const idUsuarioActivo = usuarioId ? usuarioId : 1;
 
@@ -71,7 +68,7 @@ export default function MatchFixture({ usuarioId }) {
         goles_local_pronostico: partido.golesL,
         goles_visitante_pronostico: partido.golesV
       });
-      
+
       alert(respuesta.data?.mensaje || "🚀 ¡Pronóstico fijado con éxito en Neon!");
     } catch (error) {
       alert(`❌ Error al guardar en la nube: ${error.message}`);
@@ -86,7 +83,7 @@ export default function MatchFixture({ usuarioId }) {
     <div className="d-flex flex-column gap-3 w-100 mt-3">
       {partidos.map((partido) => (
         <div key={partido.id} className="card bg-secondary bg-opacity-10 border-secondary text-white shadow-sm">
-          
+
           <div className="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center py-2">
             <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-20 font-monospace small">
               {partido.fecha} ⏳ ACTIVO
@@ -98,7 +95,7 @@ export default function MatchFixture({ usuarioId }) {
 
           <div className="card-body py-3">
             <div className="row align-items-center text-center">
-              
+
               {/* Local */}
               <div className="col-5 d-flex flex-column align-items-center">
                 <span className="display-6 mb-1">{partido.banderaL}</span>
@@ -127,7 +124,7 @@ export default function MatchFixture({ usuarioId }) {
           </div>
 
           <div className="card-footer bg-transparent border-top-0 pt-0 pb-3 px-3">
-            <button 
+            <button
               type="button"
               onClick={() => guardarPronostico(partido.id)}
               className="btn btn-sm btn-outline-success w-100 fw-bold text-uppercase"

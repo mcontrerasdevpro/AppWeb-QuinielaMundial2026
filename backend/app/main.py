@@ -116,7 +116,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
 @app.get("/api/matches")
 @app.get("/match")
 @app.get("/api/match")
-def get_matches(db: Session = Depends(get_db)):
+def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
     try:
         query = text("""
             SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as banderaL,
@@ -127,28 +127,38 @@ def get_matches(db: Session = Depends(get_db)):
             WHERE p.estado = 'programado'
         """)
         result = db.execute(query).mappings().all()
+        
+        apuestas_usuario = db.query(Pronostico).filter(Pronostico.usuario_id == usuario_id).all()
+        apuestas_map = {a.partido_id: (a.goles_local_pronostico, a.goles_visitante_pronostico) for a in apuestas_usuario}
+
         if result:
             fixture = []
             meses = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
             for row in result:
-                # CORRECCIÓN DE NEON: Parseamos el valor de la fecha de forma segura si viene como texto
                 f_raw = row["fecha_hora"]
                 f_obj = parser.parse(f_raw) if isinstance(f_raw, str) else f_raw
-                
                 fecha = f"{f_obj.day} {meses[f_obj.month - 1]} - {f_obj.strftime('%H:%M')}"
+                
+                # REGLA CLAVE: Si ya existía una apuesta previa en Neon, la pintamos; si no, por defecto ponemos 0
+                partido_id = row["id"]
+                gL, gV = apuestas_map.get(partido_id, (0, 0))
+
                 fixture.append({
-                    "id": row["id"], "grupo": row["grupo"], "fecha": fecha,
+                    "id": partido_id, "grupo": row["grupo"], "fecha": fecha,
                     "local": row["local"], "banderaL": row["banderaL"],
-                    "visitante": row["visitante"], "banderaV": row["banderaV"]
+                    "visitante": row["visitante"], "banderaV": row["banderaV"],
+                    "golesL": gL,  # <-- Inyectamos sus goles reales guardados
+                    "golesV": gV   # <-- Inyectamos sus goles reales guardados
                 })
             return fixture
+            
     except Exception as e:
         print(f"⚠️ Alerta de sincronización en Neon: {e}")
         
     return [
-        {"id": 1, "grupo": "A", "fecha": "15 JUN - 18:00", "local": "México", "banderaL": "🇲🇽", "visitante": "EE. UU.", "banderaV": "🇺🇸"},
-        {"id": 2, "grupo": "A", "fecha": "15 JUN - 21:00", "local": "Canadá", "banderaL": "🇨🇦", "visitante": "Argentina", "banderaV": "🇦🇷"},
-        {"id": 3, "grupo": "B", "fecha": "16 JUN - 15:00", "local": "España", "banderaL": "🇪🇸", "visitante": "Alemania", "banderaV": "🇩🇪"}
+        {"id": 1, "grupo": "A", "fecha": "15 JUN - 18:00", "local": "México", "banderaL": "🇲🇽", "visitante": "EE. UU.", "banderaV": "🇺🇸", "golesL": 0, "golesV": 0},
+        {"id": 2, "grupo": "A", "fecha": "15 JUN - 21:00", "local": "Canadá", "banderaL": "🇨🇦", "visitante": "Argentina", "banderaV": "🇦🇷", "golesL": 0, "golesV": 0},
+        {"id": 3, "grupo": "B", "fecha": "16 JUN - 15:00", "local": "España", "banderaL": "🇪🇸", "visitante": "Alemania", "banderaV": "🇩🇪", "golesL": 0, "golesV": 0}
     ]
 
 # 5. ENDPOINT DE GUARDADO DE PRONÓSTICOS
