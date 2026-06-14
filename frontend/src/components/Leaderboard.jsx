@@ -1,57 +1,57 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api.js';
 
 export default function Leaderboard() {
-    const [usuarios, setUsuarios] = useState([
-        { id: 1, nombre: 'Survi', puntos: 15 },
-        { id: 2, nombre: 'GolMundial', puntos: 12 },
-        { id: 3, nombre: 'HinchaFiel', puntos: 9 },
-        { id: 4, nombre: 'Maradona99', puntos: 6 },
-        { id: 5, nombre: 'CR7_Fans', puntos: 3 }
-    ]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-    return (
-        <div className="w-100 mt-3 animate-fadeIn">
-            <div className="card bg-secondary bg-opacity-10 border-secondary text-white shadow-sm">
+  useEffect(() => {
+    const obtenerRanking = async () => {
+      try {
+        const respuesta = await api.get('/ranking');
+        setUsuarios(respuesta.data);
+      } catch (error) {
+        console.log("Error al cargar la tabla de posiciones.");
+      } finally {
+        setCargando(false);
+      }
+    };
+    obtenerRanking();
+  }, []);
 
-                {/* Encabezado de la Tabla */}
-                <div className="card-header bg-dark border-secondary py-2 text-center text-uppercase fw-bold font-monospace text-warning small">
-                    🏆 Clasificación General 🏆
-                </div>
+  if (cargando) {
+    return <div className="text-center py-4 text-secondary small">🥇 Calculando posiciones globales...</div>;
+  }
 
-                {/* Lista de Posiciones */}
-                <div className="list-group list-group-flush bg-transparent">
-                    {usuarios.map((user, index) => {
-                        let medalla = '👤';
-                        let colorClase = 'text-white';
+  return (
+    <div className="w-100 mt-2 font-monospace">
+      <div className="table-responsive bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-30 p-2 shadow">
+        <table className="table table-dark table-hover table-borderless align-middle mb-0 text-center small">
+          <thead>
+            <tr className="text-secondary border-bottom border-secondary border-opacity-20" style={{ fontSize: '10px' }}>
+              <th className="py-2">POS</th>
+              <th className="py-2 text-start">HINCHA</th>
+              <th className="py-2">PTS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {usuarios.map((user, index) => {
+              let medalla = `${index + 1}°`;
+              if (index === 0) medalla = "🥇";
+              if (index === 1) medalla = "🥈";
+              if (index === 2) medalla = "🥉";
 
-                        if (index === 0) { medalla = '🥇'; colorClase = 'text-warning fw-bold'; }
-                        else if (index === 1) { medalla = '🥈'; colorClase = 'text-light fw-bold'; }
-                        else if (index === 2) { medalla = '🥉'; colorClase = 'text-info fw-bold'; }
-
-                        return (
-                            <div
-                                key={user.id}
-                                className="list-group-item bg-transparent border-secondary d-flex justify-content-between align-items-center py-3"
-                            >
-                                <div className="d-flex align-items-center gap-3">
-                                    {/* Número de posición y medalla */}
-                                    <span className="font-monospace text-secondary fw-bold" style={{ width: '20px' }}>
-                                        {index + 1}
-                                    </span>
-                                    <span className="fs-5">{medalla}</span>
-                                    <span className={`small ${colorClase}`}>{user.nombre}</span>
-                                </div>
-
-                                {/* Puntaje total */}
-                                <span className="badge bg-dark border border-secondary text-success font-monospace px-3 py-2 fs-6">
-                                    {user.puntos} pts
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-
-            </div>
-        </div>
-    );
+              return (
+                <tr key={user.id} className="border-bottom border-secondary border-opacity-10">
+                  <td className="fw-bold text-warning py-2">{medalla}</td>
+                  <td className="text-start fw-bold text-white py-2 text-uppercase">{user.nombre}</td>
+                  <td className="fw-black text-success py-2">{user.puntos}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }

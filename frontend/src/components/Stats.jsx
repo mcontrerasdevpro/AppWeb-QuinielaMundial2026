@@ -1,53 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../services/api.js';
 
 export default function Stats() {
-  // Simulación de equipos del Mundial 2026 y su estado de eliminación
-  const [equipos, setEquipos] = useState([
-    { id: 1, nombre: 'Argentina', bandera: '🇦🇷', eliminado: false, grupo: 'A' },
-    { id: 2, nombre: 'España', bandera: '🇪🇸', eliminado: false, grupo: 'B' },
-    { id: 3, nombre: 'México', bandera: '🇲🇽', eliminado: false, grupo: 'A' },
-    { id: 4, nombre: 'Canadá', bandera: '🇨🇦', eliminado: true, grupo: 'A' },  // Eliminado de prueba
-    { id: 5, nombre: 'Alemania', bandera: '🇩🇪', eliminado: true, grupo: 'B' } // Eliminado de prueba
-  ]);
+  const [metricas, setMetricas] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const cargarMetricas = async () => {
+      try {
+        const respuesta = await api.get('/stats');
+        setMetricas(respuesta.data);
+      } catch (error) {
+        console.log("Error al conectar con el servidor de estadísticas.");
+      } finally {
+        setCargando(false);
+      }
+    };
+    cargarMetricas();
+  }, []);
+
+  if (cargando) {
+    return <div className="text-center py-4 text-secondary small">📊 Compilando analítica de la FIFA...</div>;
+  }
 
   return (
-    <div className="w-100 mt-3 animate-fadeIn">
-      <div className="card bg-secondary bg-opacity-10 border-secondary text-white shadow-sm">
+    <div className="w-100 mt-2 font-monospace text-white">
+      <div className="d-flex flex-column gap-3">
         
-        <div className="card-header bg-dark border-secondary py-2 text-center text-uppercase fw-bold font-monospace text-info small">
-          📊 Monitoreo de Selecciones 📊
+        
+        <div className="row g-2 text-center">
+          <div className="col-6">
+            <div className="bg-secondary bg-opacity-10 border border-secondary border-opacity-30 rounded-3 p-3 shadow-sm">
+              <span className="d-block text-muted small" style={{ fontSize: '10px' }}>PRONÓSTICOS</span>
+              <span className="fs-3 fw-black text-success">{metricas.total_predictions}</span>
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="bg-secondary bg-opacity-10 border border-secondary border-opacity-30 rounded-3 p-3 shadow-sm">
+              <span className="d-block text-muted small" style={{ fontSize: '10px' }}>PROM. GOLES</span>
+              <span className="fs-3 fw-black text-warning">{metricas.average_goals}</span>
+            </div>
+          </div>
         </div>
 
-        <div className="card-body p-3">
-          <p className="text-secondary text-center mb-3" style={{ fontSize: '11px' }}>
-            Los equipos eliminados oficialmente del torneo se muestran atenuados en escala de grises.
-          </p>
-
-          <div className="d-flex flex-column gap-2">
-            {equipos.map((team) => (
-              <div 
-                key={team.id}
-                className={`d-flex justify-content-between align-items-center p-2 rounded border border-opacity-25 ${
-                  team.eliminado 
-                    ? 'bg-danger bg-opacity-10 border-danger opacity-50 text-secondary' 
-                    : 'bg-dark bg-opacity-50 border-secondary text-white'
-                }`}
-              >
-                <div className="d-flex align-items-center gap-3">
-                  <span className="fs-4">{team.bandera}</span>
-                  <span className="small fw-bold">{team.nombre}</span>
-                  {team.eliminado && (
-                    <span className="badge bg-danger text-uppercase font-monospace" style={{ fontSize: '8px' }}>
-                      Eliminado ❌
-                    </span>
-                  )}
-                </div>
-                
-                <span className="badge bg-secondary bg-opacity-25 border border-secondary text-muted small">
-                  Grupo {team.grupo}
-                </span>
+        <div className="bg-secondary bg-opacity-10 border border-secondary border-opacity-30 rounded-4 p-3 shadow-sm">
+          <h6 className="text-center text-success fw-bold tracking-wider mb-3" style={{ fontSize: '12px' }}>📊 TENDENCIA DE APUESTAS</h6>
+          
+          <div className="d-flex flex-column gap-2 small">
+            <div>
+              <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
+                <span>🏠 Victoria Local</span>
+                <span className="fw-bold text-white">{metricas.tendencies.local}%</span>
               </div>
-            ))}
+              <div className="progress bg-dark" style={{ height: '8px' }}>
+                <div className="progress-bar bg-success" style={{ width: `${metricas.tendencies.local}%` }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
+                <span>🤝 Empate</span>
+                <span className="fw-bold text-white">{metricas.tendencies.draw}%</span>
+              </div>
+              <div className="progress bg-dark" style={{ height: '8px' }}>
+                <div className="progress-bar bg-warning" style={{ width: `${metricas.tendencies.draw}%` }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
+                <span>✈️ Victoria Visitante</span>
+                <span className="fw-bold text-white">{metricas.tendencies.away}%</span>
+              </div>
+              <div className="progress bg-dark" style={{ height: '8px' }}>
+                <div className="progress-bar bg-info" style={{ width: `${metricas.tendencies.away}%` }}></div>
+              </div>
+            </div>
           </div>
         </div>
 

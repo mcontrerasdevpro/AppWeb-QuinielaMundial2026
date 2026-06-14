@@ -6,7 +6,7 @@ from typing import List
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.tables import Usuario, Partido, Equipo, Pronostico
-from dateutil import parser  # Importación para procesar fechas de Neon sin fallos
+from dateutil import parser 
 
 app = FastAPI(
     title="API Quiniela Mundial 2026",
@@ -14,7 +14,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 🔐 LIBERACIÓN TOTAL DE CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,7 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Esquemas de Validación (Pydantic)
 class UserCreate(BaseModel):
     nombre: str
     email: str
@@ -39,7 +37,6 @@ class PredictionCreate(BaseModel):
     goles_local_pronostico: int
     goles_visitante_pronostico: int
 
-# Gestor de WebSockets (Tiempo Real)
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -71,8 +68,8 @@ def read_root():
     }
 
 # 2. ENDPOINT DE INICIO DE SESIÓN (SIGN IN)
-@app.post("/auth/login")      # <-- ¡Asegúrate de que esta línea exacta esté aquí!
-@app.post("/api/auth/login")  # <-- ¡Asegúrate de que esta línea exacta también esté aquí!
+@app.post("/auth/login")      
+@app.post("/api/auth/login")  
 def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == user_data.email).first()
     if not usuario:
@@ -91,7 +88,6 @@ def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
 # ==========================================
 # 3. ENDPOINT DE REGISTRO
 # ==========================================
-# Dejamos SOLAMENTE este decorador para que calce con React
 @app.post("/auth/register", status_code=201)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     email_exists = db.query(Usuario).filter(Usuario.email == user_data.email).first()
@@ -119,7 +115,6 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
 @app.get("/api/match")
 def get_matches(usuario_id: int = 1, dia: int = 15, db: Session = Depends(get_db)):
     try:
-        # Traemos todos los partidos programados sin que la zona horaria de la nube interfiera
         query = text("""
             SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as banderaL,
                    ev.nombre as visitante, ev.bandera_url as banderaV
@@ -142,7 +137,6 @@ def get_matches(usuario_id: int = 1, dia: int = 15, db: Session = Depends(get_db
                 f_raw = row["fecha_hora"]
                 f_obj = parser.parse(f_raw) if isinstance(f_raw, str) else f_raw
                 
-                # REGLA DE FILTRADO EXCAVADA: Comparamos si el día coincide exactamente en memoria
                 if f_obj.day == int(dia):
                     fecha_formateada = f"{f_obj.day} {meses[f_obj.month - 1]} - {f_obj.strftime('%H:%M')}"
                     partido_id = row["id"]
@@ -218,3 +212,94 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
     except Exception:
         manager.disconnect(websocket)
+
+@app.post("/matches/{partido_id}/finish")
+@app.post("/api/matches/{partido_id}/finish")
+def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: int, db: Session = Depends(get_db)):
+    try:
+        partido = db.query(Partido).filter(Partido.id == partido_id).first()
+        if not partido:
+            raise HTTPException(status_code=404, detail="Partido no encontrado.")
+        
+        partido.estado = "finalizado"
+        db.commit()
+
+        pronosticos = db.query(Pronostico).filter(Pronostico.partido_id == partido_id).all()
+
+        for p in pronosticos:
+            puntos_ganados = 0
+            
+            if p.goles_local_pronostico == goles_local_real and p.goles_visitante_pronostico == goles_visitante_real:
+                puntos_ganados = 3
+            else:
+                tendencia_real = goles_local_real - goles_visitante_real
+                tendencia_pronostico = p.goles_local_pronostico - p.goles_visitante_pronostico
+                
+                if (tendencia_real > 0 and tendencia_pronostico > 0) or \
+                   (tendencia_real < 0 and tendencia_pronostico < 0) or \
+                   (tendencia_real == 0 and tendencia_pronostico == 0):
+                    puntos_ganados = 1
+
+            usuario = db.query(Usuario).filter(Usuario.id == p.usuario_id).first()
+            if usuario:
+                if not hasattr(usuario, 'puntos') or usuario.puntos is None:
+                    usuario.puntos = 0
+                usuario.puntos += puntos_ganados
+
+        db.commit()
+        return {"status": "success", "mensaje": f"🏁 ¡Partido {partido_id} finalizado! Marcador real: {goles_local_real}-{goles_visitante_real}. Tabla de posiciones actualizada."}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error en el motor de puntos: {str(e)}")
+
+# ==========================================
+# 7.2 ENDPOINT PARA EXPONER EL RANKING EN VIVO
+# ==========================================
+@app.get("/ranking")
+@app.get("/api/ranking")
+def get_ranking(db: Session = Depends(get_db)):
+    try:
+        query = text("SELECT id, nombre, COALESCE(puntos, 0) as puntos FROM usuarios ORDER BY puntos DESC, nombre ASC")
+        result = db.execute(query).mappings().all()
+        return list(result)
+    except Exception as e:
+        return [{"id": 1, "nombre": "Survi", "puntos": 0}]
+    
+# ==========================================
+# 8. MOTOR DE ESTADÍSTICAS GLOBALES (NEON)
+# ==========================================
+@app.get("/stats")
+@app.get("/api/stats")
+def get_global_stats(db: Session = Depends(get_db)):
+    try:
+        total_apuestas = db.query(Pronostico).count()
+        
+        query_goles = text("""
+            SELECT COALESCE(AVG(goles_local_pronostico + goles_visitante_pronostico), 0) as promedio 
+            FROM pronosticos
+        """)
+        promedio_goles = round(float(db.execute(query_goles).scalar()), 1)
+        
+        query_tendencias = text("""
+            SELECT 
+                COUNT(CASE WHEN goles_local_pronostico > goles_visitante_pronostico THEN 1 END) as locales,
+                COUNT(CASE WHEN goles_local_pronostico = goles_visitante_pronostico THEN 1 END) as empates,
+                COUNT(CASE WHEN goles_local_pronostico < goles_visitante_pronostico THEN 1 END) as visitantes
+            FROM pronosticos
+        """)
+        res = db.execute(query_tendencias).mappings().first()
+        
+        total = total_apuestas if total_apuestas > 0 else 1
+        pct_local = round((res["locales"] / total) * 100)
+        pct_empate = round((res["empates"] / total) * 100)
+        pct_visitante = round((res["visitantes"] / total) * 100)
+        
+        return {
+            "total_predictions": total_apuestas,
+            "average_goals": promedio_goles,
+            "tendencies": {"local": pct_local, "draw": pct_empate, "away": pct_visitante}
+        }
+    except Exception as e:
+        print(f"⚠️ Alerta en Stats: {e}")
+        return {"total_predictions": 0, "average_goals": 0.0, "tendencies": {"local": 33, "draw": 34, "away": 33}}
