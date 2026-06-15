@@ -8,6 +8,9 @@ export default function MatchFixture({ usuarioId }) {
   const [golesTemporales, setGolesTemporales] = useState({});
   const [cargando, setCargando] = useState(true);
   const [guardandoId, setGuardandoId] = useState(null);
+  
+  // 🆕 ESTADO PARA CONTROLAR LA PESTAÑA SELECCIONADA ("activos" o "resultados")
+  const [vistaActiva, setVistaActiva] = useState("activos");
 
   const uid = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : 1;
 
@@ -63,6 +66,7 @@ export default function MatchFixture({ usuarioId }) {
       [`${partidoId}_${campo}`]: numero
     }));
   };
+
   const guardarPronosticoEnBaseDeDatos = async (partidoId) => {
     try {
       setGuardandoId(partidoId);
@@ -108,10 +112,20 @@ export default function MatchFixture({ usuarioId }) {
 
   const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-11";
 
+  // 🛠️ FILTRADO DINÁMICO SEGÚN LA PESTAÑA SELECCIONADA
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
     const pFechaLimpia = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
-    return pFechaLimpia === fechaActual;
+    if (pFechaLimpia !== fechaActual) return false;
+
+    // Tu API de Render debe devolver los goles reales del partido (ej: p.goles_real_l) para saber si ya terminó
+    // Si estás en resultados, filtramos solo partidos que ya tengan un resultado definitivo cargado por ti
+    if (vistaActiva === "resultados") {
+      return p.goles_real_l !== null && p.goles_real_v !== null && p.goles_real_l !== undefined;
+    }
+
+    // Si estás en activos, muestra solo los partidos que aún no tienen un resultado oficial asignado
+    return p.goles_real_l === null || p.goles_real_l === undefined;
   });
 
   let fechaFormateadaVisual = fechaActual;
@@ -123,174 +137,205 @@ export default function MatchFixture({ usuarioId }) {
   }
 
   return (
-    <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
+  <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
 
-      <style>{`
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type=number] {
-          -moz-appearance: textfield;
-        }
-      `}</style>
+    <style>{`
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type=number] {
+        -moz-appearance: textfield;
+      }
+    `}</style>
 
-      <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
-        <button
-          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
-          onClick={irAtras}
-          disabled={indiceFecha === 0}
-          style={{ minWidth: '95px' }}
-        >
-          ⬅️ Atrás
-        </button>
+    {/* BOTONES ANTERIOR / SIGUIENTE JORNADA */}
+    <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
+      <button
+        className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
+        onClick={irAtras}
+        disabled={indiceFecha === 0}
+        style={{ minWidth: '95px' }}
+      >
+        ⬅️ Atrás
+      </button>
 
-        <div className="text-center">
-          <div className="text-secondary small tracking-wider mb-1" style={{ fontSize: '0.75rem' }}>
-            JORNADA {indiceFecha + 1} / {fechasDisponibles.length}
-          </div>
-          <h5 className="mb-0 fw-black text-success text-capitalize tracking-wide font-monospace text-shadow-sm">
-            {fechaFormateadaVisual}
-          </h5>
+      <div className="text-center">
+        <div className="text-secondary small tracking-wider mb-1" style={{ fontSize: '0.75rem' }}>
+          JORNADA {indiceFecha + 1} / {fechasDisponibles.length}
         </div>
-
-        <button
-          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
-          onClick={irSiguiente}
-          disabled={indiceFecha === fechasDisponibles.length - 1}
-          style={{ minWidth: '95px' }}
-        >
-          Siguiente ➡️
-        </button>
+        <h5 className="mb-0 fw-black text-success text-capitalize tracking-wide font-monospace text-shadow-sm">
+          {fechaFormateadaVisual}
+        </h5>
       </div>
 
-      <div className="row g-2 px-1" style={{ maxHeight: '330px', overflowY: 'auto' }}>
-        {partidosDelDia.length === 0 ? (
-          <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary">
-            📅 No hay partidos registrados para esta fecha.
-          </div>
-        ) : (
-          partidosDelDia.map((partido) => {
-            let horaStr = "00:00";
-            const strCompleto = String(partido.fecha_hora).replace('T', ' ').trim();
-            if (strCompleto.length >= 16) {
-              horaStr = strCompleto.substring(11, 16);
+      <button
+        className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
+        onClick={irSiguiente}
+        disabled={indiceFecha === fechasDisponibles.length - 1}
+        style={{ minWidth: '95px' }}
+      >
+        Siguiente ➡️
+      </button>
+    </div>
+
+    {/* BOTONES INTERACTIVOS DE PESTAÑAS */}
+    <div className="d-flex gap-2 mb-3 px-1">
+      <button 
+        className={`btn flex-grow-1 py-2 fw-bold font-monospace ${vistaActiva === 'activos' ? 'btn-success text-white' : 'btn-outline-secondary text-secondary'}`}
+        onClick={() => setVistaActiva('activos')}
+      >
+        ⏳ ACTIVOS
+      </button>
+      <button 
+        className={`btn flex-grow-1 py-2 fw-bold font-monospace ${vistaActiva === 'resultados' ? 'btn-warning text-dark' : 'btn-outline-secondary text-secondary'}`}
+        onClick={() => setVistaActiva('resultados')}
+      >
+        🏁 RESULTADOS
+      </button>
+    </div>
+
+    <div className="row g-2 px-1" style={{ maxHeight: '330px', overflowY: 'auto' }}>
+      {partidosDelDia.length === 0 ? (
+        <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary">
+          {vistaActiva === 'resultados' 
+            ? "📅 No hay partidos finalizados registrados para esta fecha." 
+            : "📅 No tienes pronósticos pendientes para esta fecha."}
+        </div>
+      ) : (
+        partidosDelDia.map((partido) => {
+          let horaStr = "00:00";
+          const strCompleto = String(partido.fecha_hora).replace('T', ' ').trim();
+          if (strCompleto.length >= 16) {
+            horaStr = strCompleto.substring(11, 16);
+          }
+
+          const valLocal = golesTemporales[partido.id + "_local"] ?? "";
+          const valVisitante = golesTemporales[partido.id + "_visitante"] ?? "";
+          const estaGuardando = guardandoId === partido.id;
+
+          const obtenerCodigoSeguro = (nombre, banderaNeon) => {
+            if (banderaNeon && String(banderaNeon).trim().length === 2) {
+              return String(banderaNeon).trim().toLowerCase();
             }
 
-            const valLocal = golesTemporales[partido.id + "_local"] ?? "";
-            const valVisitante = golesTemporales[partido.id + "_visitante"] ?? "";
-            const estaGuardando = guardandoId === partido.id;
+            const n = String(nombre).trim().toLowerCase()
+              .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-            const obtenerCodigoSeguro = (nombre, banderaNeon) => {
-              if (banderaNeon && String(banderaNeon).trim().length === 2) {
-                return String(banderaNeon).trim().toLowerCase();
-              }
+            if (n === 'mexico') return 'mx';
+            if (n === 'ecuador') return 'ec';
+            if (n === 'canada') return 'ca';
+            if (n === 'nigeria') return 'ng';
+            if (n === 'australia') return 'au';
+            if (n === 'suecia') return 'se';
+            if (n === 'irlanda') return 'ie';
+            if (n === 'corea del sur') return 'kr';
+            if (n === 'estados unidos') return 'us';
+            if (n === 'espana') return 'es';
+            if (n === 'marruecos') return 'ma';
+            if (n === 'zambia') return 'zm';
+            if (n === 'argentina') return 'ar';
+            if (n === 'francia') return 'fr';
+            if (n === 'alemania') return 'de';
+            if (n === 'paises bajos') return 'nl';
+            if (n === 'brasil') return 'br';
+            if (n === 'italia') return 'it';
+            if (n === 'japon') return 'jp';
+            if (n === 'costa rica') return 'cr';
+            if (n === 'belgica') return 'be';
+            if (n === 'croacia') return 'hr';
+            if (n === 'portugal') return 'pt';
+            if (n === 'ghana') return 'gh';
+            if (n === 'uruguay') return 'uy';
+            if (n === 'inglaterra') return 'gb-eng';
+            if (n === 'colombia') return 'co';
+            if (n === 'senegal') return 'sn';
+            if (n === 'chile') return 'cl';
+            if (n === 'dinamarca') return 'dk';
+            if (n === 'peru') return 'pe';
+            if (n === 'suiza') return 'ch';
+            if (n === 'paraguay') return 'py';
+            if (n === 'camerun') return 'cm';
+            if (n === 'venezuela') return 've';
+            if (n === 'ucrania') return 'ua';
 
-              const n = String(nombre).trim().toLowerCase()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Quita tildes (México -> mexico)
+            return 'un';
+          };
 
-              if (n === 'mexico') return 'mx';
-              if (n === 'ecuador') return 'ec';
-              if (n === 'canada') return 'ca';
-              if (n === 'nigeria') return 'ng';
-              if (n === 'australia') return 'au';
-              if (n === 'suecia') return 'se';
-              if (n === 'irlanda') return 'ie';
-              if (n === 'corea del sur') return 'kr';
-              if (n === 'estados unidos') return 'us';
-              if (n === 'espana') return 'es';
-              if (n === 'marruecos') return 'ma';
-              if (n === 'zambia') return 'zm';
-              if (n === 'argentina') return 'ar';
-              if (n === 'francia') return 'fr';
-              if (n === 'alemania') return 'de';
-              if (n === 'paises bajos') return 'nl';
-              if (n === 'brasil') return 'br';
-              if (n === 'italia') return 'it';
-              if (n === 'japon') return 'jp';
-              if (n === 'costa rica') return 'cr';
-              if (n === 'belgica') return 'be';
-              if (n === 'croacia') return 'hr';
-              if (n === 'portugal') return 'pt';
-              if (n === 'ghana') return 'gh';
-              if (n === 'uruguay') return 'uy';
-              if (n === 'inglaterra') return 'gb-eng';
-              if (n === 'colombia') return 'co';
-              if (n === 'senegal') return 'sn';
-              if (n === 'chile') return 'cl';
-              if (n === 'dinamarca') return 'dk';
-              if (n === 'peru') return 'pe';
-              if (n === 'suiza') return 'ch';
-              if (n === 'paraguay') return 'py';
-              if (n === 'camerun') return 'cm';
-              if (n === 'venezuela') return 've';
-              if (n === 'ucrania') return 'ua';
-
-              return 'un';
-            };
-
-            const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
-            const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
+          const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
+          const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
 
             return (
-              <div key={partido.id} className="col-12">
-                <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
-                  <div className="card-body p-2 pb-3">
+            <div key={partido.id} className="col-12">
+              <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
+                <div className="card-body p-2 pb-3">
 
-                    <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
-                      GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
+                  <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
+                    GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-center px-1 mb-2">
+
+                    {/* Local */}
+                    <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                      <img
+                        src={`https://flagcdn.com{isoL}.png`}
+                        alt={partido.local}
+                        className="rounded border border-secondary shadow-sm mb-1"
+                        style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                      />
+                      <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
+                        {partido.local}
+                      </div>
                     </div>
 
-                    <div className="d-flex justify-content-between align-items-center px-1 mb-2">
-
-                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                        <img
-                          src={`https://flagcdn.com/w40/${isoL}.png`}
-                          alt={partido.local}
-                          className="rounded border border-secondary shadow-sm mb-1"
-                          style={{ width: '32px', height: '20px', objectFit: 'cover' }}
-                        />
-                        <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
-                          {partido.local}
+                    {/* MARCADORES CONDICIONALES INTERNOS */}
+                    <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
+                      {vistaActiva === "resultados" ? (
+                        <div className="d-flex align-items-center bg-black bg-opacity-40 px-2 py-1 rounded border border-secondary gap-2 fw-bold text-warning" style={{ fontSize: '1.1rem' }}>
+                          <span>{partido.goles_real_local ?? 0}</span>
+                          <span className="text-muted" style={{ fontSize: '0.8rem' }}>-</span>
+                          <span>{partido.goles_real_visitante ?? 0}</span>
                         </div>
-                      </div>
-
-                      {/* INPUTS DE MARCADORES INTEGRADOS */}
-                      <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
-                        <input
-                          type="number"
-                          className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
-                          style={{ width: '38px', fontSize: '1rem', height: '34px' }}
-                          value={valLocal}
-                          onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
-                        />
-                        <span className="mx-1 text-secondary fw-bold">-</span>
-                        <input
-                          type="number"
-                          className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
-                          style={{ width: '38px', fontSize: '1rem', height: '34px' }}
-                          value={valVisitante}
-                          onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
-                        />
-                      </div>
-
-                      {/* Visitante */}
-                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                        <img
-                          src={`https://flagcdn.com/w40/${isoV}.png`}
-                          alt={partido.visitante}
-                          className="rounded border border-secondary shadow-sm mb-1"
-                          style={{ width: '32px', height: '20px', objectFit: 'cover' }}
-                        />
-                        <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
-                          {partido.visitante}
-                        </div>
-                      </div>
-
+                      ) : (
+                        <>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
+                            style={{ width: '38px', fontSize: '1rem', height: '34px' }}
+                            value={valLocal}
+                            onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
+                          />
+                          <span className="mx-1 text-secondary fw-bold">-</span>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
+                            style={{ width: '38px', fontSize: '1rem', height: '34px' }}
+                            value={valVisitante}
+                            onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
+                          />
+                        </>
+                      )}
                     </div>
 
-                    {/* BOTÓN INDEPENDIENTE PARA GUARDAR PRONÓSTICO */}
+                    {/* Visitante */}
+                    <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                      <img
+                        src={`https://flagcdn.com{isoV}.png`}
+                        alt={partido.visitante}
+                        className="rounded border border-secondary shadow-sm mb-1"
+                        style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                      />
+                      <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
+                        {partido.visitante}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* EL BOTÓN SOLO APARECE EN LA PESTAÑA ACTIVOS */}
+                  {vistaActiva === "activos" && (
                     <div className="text-center mt-2 px-4">
                       <button
                         className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
@@ -306,15 +351,16 @@ export default function MatchFixture({ usuarioId }) {
                         ) : "💾 GUARDAR PRONÓSTICO"}
                       </button>
                     </div>
+                  )}
 
-                  </div>
                 </div>
               </div>
-            );
-          })
-        )}
-      </div>
-
+            </div>
+          );
+        })
+      )}
     </div>
-  );
+
+  </div>
+);
 }
