@@ -5,50 +5,38 @@ export default function MatchFixture({ usuarioId }) {
   const [partidosTotales, setPartidosTotales] = useState([]);
   const [fechasDisponibles, setFechasDisponibles] = useState([]);
   const [indiceFecha, setIndiceFecha] = useState(0);
-  const [pronosticosUser, setPronosticosUser] = useState({}); // Memoria de porras guardadas
   const [golesTemporales, setGolesTemporales] = useState({}); // Cambios en vivo en inputs
   const [cargando, setCargando] = useState(true);
 
-  const cargarDatosMundial = async () => {
+  const cargarFixture = async () => {
     try {
       setCargando(true);
-      // 1. Extraemos los 72 partidos reales de Neon
-      const resPartidos = await api.get('/matches');
+      const respuesta = await api.get('/matches');
       
-      if (resPartidos.data && Array.isArray(resPartidos.data) && resPartidos.data.length > 0) {
-        setPartidosTotales(resPartidos.data);
+      if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
+        setPartidosTotales(respuesta.data);
         
-        // Agrupamos y extraemos las fechas únicas (formato YYYY-MM-DD)
-        const fechas = [...new Set(resPartidos.data.map(p => p.fecha_hora.split('T')[0]))].sort();
+        // Agrupamos las fechas únicas basándonos en la fecha_hora del partido
+        const fechas = [...new Set(respuesta.data.map(p => p.fecha_hora.split('T')[0]))].sort();
         setFechasDisponibles(fechas);
         
-        // 2. Extraemos los pronósticos previos que este usuario ya guardó en Neon
-        if (usuarioId) {
-          try {
-            const resPorras = await api.get(`/ranking`); // Fallback o lectura directa si tienes endpoint
-            // Mapeamos los goles guardados para rellenar los cuadros automáticamente
-            const porrasMapeadas = {};
-            const inputsMapeados = {};
-            
-            // Si el backend te devuelve la lista de porras del usuario, las mapeas aquí:
-            // resPorras.data.forEach(p => { porrasMapeadas[p.partido_id] = p; ... })
-            
-            setPronosticosUser(porrasMapeadas);
-          } catch (e) { console.log("Nota: Iniciando porras limpias."); }
-        }
+        // Intentamos posicionar al hincha en la fecha de hoy o en el primer día
+        const hoyStr = new Date().toISOString().split('T')[0];
+        const idxHoy = fechas.indexOf(hoyStr);
+        setIndiceFecha(idxHoy !== -1 ? idxHoy : 0);
       }
     } catch (error) {
-      console.error("Error al sincronizar fixture:", error);
+      console.error("Error al cargar fixture:", error);
     } finally {
       setCargando(false);
     }
   };
 
   useEffect(() => {
-    cargarDatosMundial();
+    cargarFixture();
   }, [usuarioId]);
 
-  // FUNCIÓN ASÍNCRONA PARA GRABAR LOS GOLES EN LA NUBE DE NEON
+  // FUNCIÓN ASÍNCRONA PARA COMPARTIR LA PORRA CON TU SQUEMA DEFINITIVO
   const guardarPorra = async (partidoId) => {
     const gLocal = golesTemporales[`${partidoId}_local`] ?? "";
     const gVisitante = golesTemporales[`${partidoId}_visitante`] ?? "";
@@ -59,15 +47,15 @@ export default function MatchFixture({ usuarioId }) {
     }
 
     try {
+      // 🚀 CONEXIÓN DIRECTA CON TU MODELO 'PredictionCreate'
       await api.post('/pronosticos', {
-        usuario_id: usuarioId || 1, // Fallback de seguridad si no lee la sesión
-        partidoid: partidoId,
-        goleslocal: parseInt(gLocal),
-        goles_visitante: parseInt(gVisitante)
+        usuario_id: usuarioId || 1, // Fallback si la sesión local está fría
+        partido_id: partidoId,
+        goles_local_pronostico: parseInt(gLocal),
+        goles_visitante_pronostico: parseInt(gVisitante)
       });
       
       alert("🎰 ¡Porra guardada e inyectada con éxito definitivo en Neon!");
-      cargarDatosMundial(); // Recargamos para congelar el resultado en pantalla
     } catch (error) {
       alert(`❌ Error al conectar con Neon: ${error.message}`);
     }
@@ -81,7 +69,7 @@ export default function MatchFixture({ usuarioId }) {
   };
 
   if (cargando) {
-    return <div className="text-center py-5 font-monospace text-success small">⚽ Sincronizando calendario oficial con Neon...</div>;
+    return <div className="text-center py-5 font-monospace text-success small">⚽ Sincronizando calendario con Neon...</div>;
   }
 
   if (fechasDisponibles.length === 0) {
@@ -123,17 +111,16 @@ export default function MatchFixture({ usuarioId }) {
         </button>
       </div>
 
-      {/* 🏟️ RENDERIZADO DINÁMICO DE PARTIDOS CON PERSISTENCIA DE VALORES */}
+      {/* 🏟️ LISTADO DINÁMICO DE PARTIDOS CON TU MODELO */}
       <div className="d-flex flex-column gap-3">
         {partidosDelDia.map((partido) => {
-          // Si el input está vacío, intentamos leer el valor que ya estaba guardado en Neon
-          const valorLocal = golesTemporales[`${partido.id}_local`] ?? pronosticosUser[partido.id]?.goles_local ?? "";
-          const valorVisitante = golesTemporales[`${partido.id}_visitante`] ?? pronosticosUser[partido.id]?.goles_visitante ?? "";
+          const valorLocal = golesTemporales[`${partido.id}_local`] ?? "";
+          const valorVisitante = golesTemporales[`${partido.id}_visitante`] ?? "";
 
           return (
             <div key={partido.id} className="card bg-dark bg-opacity-40 border-secondary border-opacity-20 text-white shadow-sm">
               <div className="card-header bg-transparent border-secondary border-opacity-10 d-flex justify-content-between align-items-center py-2" style={{ fontSize: '10px' }}>
-                <span className="text-muted fw-bold">🕒 {partido.fecha_hora.split('T')[1].substring(0, 5)} HS</span>
+                <span className="text-muted fw-bold">⏳ ESTADO: {partido.estado || 'PROGRAMADO'}</span>
                 <span className="badge bg-secondary bg-opacity-20 text-success fw-bold text-uppercase">GRUPO {partido.grupo}</span>
               </div>
               <div className="card-body py-3 text-center">
