@@ -221,7 +221,7 @@ export default function MatchFixture({ usuarioId }) {
 
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com{isoL}.png`}
+                          src={`https://flagcdn.com/40/${isoL}.png`}
                           alt={partido.local}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -253,7 +253,7 @@ export default function MatchFixture({ usuarioId }) {
                       {/* Visitante */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com{isoV}.png`}
+                          src={`https://flagcdn.com/w40/${isoV}.png`}
                           alt={partido.visitante}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
