@@ -9,13 +9,9 @@ export default function FinishedMatches() {
     const cargarTerminados = async () => {
       try {
         const respuesta = await api.get('/matches');
-        
         if (respuesta.data && Array.isArray(respuesta.data)) {
-          const filtrados = respuesta.data.filter(p => 
-            p.golesL !== null && 
-            p.golesL !== undefined && 
-            p.golesL !== ""
-          );
+          // Filtramos basándonos en que los goles ya estén registrados en Neon
+          const filtrados = respuesta.data.filter(p => p.goles_real_local !== null && p.goles_real_local !== undefined);
           setTerminados(filtrados);
         }
       } catch (error) {
@@ -90,7 +86,7 @@ export default function FinishedMatches() {
     );
   }
 
-   return (
+  return (
     <div className="d-flex flex-column gap-2 w-100 font-monospace" style={{ maxHeight: '330px', overflowY: 'auto' }}>
       {terminados.map((partido) => {
         const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
@@ -99,7 +95,7 @@ export default function FinishedMatches() {
         return (
           <div key={partido.id} className="card shadow border-0 border-start border-warning border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary p-2">
             <div className="row align-items-center justify-content-between g-0">
-              
+
               {/* Local */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
@@ -116,9 +112,9 @@ export default function FinishedMatches() {
               {/* Marcador */}
               <div className="col-3 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-50 border border-secondary rounded px-3 py-1 fw-bold text-warning h-100" style={{ fontSize: '1.1rem', minWidth: '70px' }}>
-                  <span>{partido.goles_real_local ?? 0}</span>
+                  <span>{partido.goles_real_local}</span>
                   <span className="text-muted mx-1">-</span>
-                  <span>{partido.goles_real_visitante ?? 0}</span>
+                  <span>{partido.goles_real_visitante}</span>
                 </div>
               </div>
 
