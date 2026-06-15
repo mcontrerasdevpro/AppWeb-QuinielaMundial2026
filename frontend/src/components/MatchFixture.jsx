@@ -5,34 +5,43 @@ export default function MatchFixture({ usuarioId }) {
   const [partidosTotales, setPartidosTotales] = useState([]);
   const [fechasDisponibles, setFechasDisponibles] = useState([]);
   const [indiceFecha, setIndiceFecha] = useState(0);
+  const [golesTemporales, setGolesTemporales] = useState({});
   const [cargando, setCargando] = useState(true);
+  const [guardandoId, setGuardandoId] = useState(null);
+
+  const uid = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : 1;
 
   useEffect(() => {
     const cargarFixture = async () => {
       try {
         setCargando(true);
-        // Saneamos el usuario_id para producción
-        const idLimpio = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : 1;
-        
-        const respuesta = await api.get(`/matches?usuario_id=${idLimpio}`);
+        const respuesta = await api.get(`/matches?usuario_id=${uid}`);
         
         if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
           setPartidosTotales(respuesta.data);
           
-          // Extraer fechas YYYY-MM-DD ordenadas
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
             if (!p.fecha_hora) return "2026-06-11";
             return String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
           }))].sort();
           
           setFechasDisponibles(fechasUnicas);
-          
-          // 🛠️ SOLUCIÓN: Forzamos a que empiece siempre en el DÍA 1 del mundial (índice 0) 
-          // para ver los partidos cargados desde el 11 de junio.
+          setIndiceFecha(0);
+
+          // Inicializar los goles temporales con las apuestas guardadas que traiga Neon
+          const estadoInicialGoles = {};
+          respuesta.data.forEach(p => {
+            estadoInicialGoles[`${p.id}_local`] = p.golesL !== undefined ? p.golesL : 0;
+            estadoInicialGoles[`${p.id}_visitante`] = p.golesV !== undefined ? p.golesV : 0;
+          });
+          setGolesTemporales(estadoInicialGoles);
+        } else {
+          setFechasDisponibles(["2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14"]);
           setIndiceFecha(0);
         }
       } catch (error) {
         console.error("❌ Error al traer el fixture de Neon:", error);
+        setFechasDisponibles(["2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14"]);
       } finally {
         setCargando(false);
       }
@@ -48,33 +57,67 @@ export default function MatchFixture({ usuarioId }) {
     if (indiceFecha < fechasDisponibles.length - 1) setIndiceFecha(indiceFecha + 1);
   };
 
+  // Manejador para actualizar el estado local mientras el usuario escribe los goles
+  const handleCambioGoles = (partidoId, campo, valor) => {
+    const numero = valor === "" ? "" : Math.max(0, parseInt(valor) || 0);
+    setGolesTemporales(prev => ({
+      ...prev,
+      [`${partidoId}_${campo}`]: numero
+    }));
+  };
+   const guardarPronosticoEnBaseDeDatos = async (partidoId) => {
+    try {
+      setGuardandoId(partidoId);
+      
+      const golesLocal = golesTemporales[`${partidoId}_local`] || 0;
+      const golesVisitante = golesTemporales[`${partidoId}_visitante`] || 0;
+
+      const payload = {
+        usuario_id: uid,
+        partido_id: partidoId,
+        goles_local_pronostico: Number(golesLocal),
+        goles_visitante_pronostico: Number(golesVisitante)
+      };
+
+      console.log("🚀 Enviando pronóstico a Render:", payload);
+      const respuesta = await api.post('/predictions', payload);
+      
+      if (respuesta.data && respuesta.data.status === "success") {
+        alert("⚽ ¡Pronóstico guardado con éxito absoluto en Neon! 🔥");
+        
+        // Actualizar la lista en memoria para sincronizar el estado guardado
+        setPartidosTotales(prev => prev.map(p => {
+          if (p.id === partidoId) {
+            return { ...p, golesL: golesLocal, golesV: golesVisitante };
+          }
+          return p;
+        }));
+      }
+    } catch (error) {
+      console.error("❌ Error al almacenar el pronóstico:", error);
+      alert("⚠️ Hubo un error de sincronización al conectar con Render.");
+    } finally {
+      setGuardandoId(null);
+    }
+  };
+
   if (cargando) {
     return (
-      <div className="text-center py-5 font-monospace text-success small bg-white rounded border my-3">
+      <div className="text-center py-5 font-monospace text-success small bg-dark bg-opacity-50 text-white rounded-4 border border-secondary my-3">
         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-        ⚽ Cargando fixture oficial de Neon...
+        ⚽ Sincronizando estadio con Neon...
       </div>
     );
   }
 
-  if (fechasDisponibles.length === 0) {
-    return (
-      <div className="text-center py-4 text-muted font-monospace small bg-white rounded border my-3">
-        📅 No se encontraron fechas en Neon.
-      </div>
-    );
-  }
-
-  const fechaActual = fechasDisponibles[indiceFecha];
+  const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-11";
   
-  // Filtrado estricto por la fecha del índice actual
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
     const pFechaLimpia = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
     return pFechaLimpia === fechaActual;
   });
 
-  // Convertir fecha YYYY-MM-DD a formato legible (Ej: "11 de junio")
   let fechaFormateadaVisual = fechaActual;
   try {
     const opcionesFecha = { day: 'numeric', month: 'long', timeZone: 'UTC' };
@@ -84,40 +127,44 @@ export default function MatchFixture({ usuarioId }) {
   }
 
   return (
-    <div className="p-3 bg-white text-dark rounded border my-3" style={{ maxWidth: '100%' }}>
+    <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
       
-      {/* 🔘 NAVEGACIÓN DEL CALENDARIO */}
-      <div className="d-flex justify-content-between align-items-center mb-3 bg-light p-2 rounded border">
+      {/* 🔘 NAVEGACIÓN DEL CALENDARIO MODERNA */}
+      <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
         <button 
-          className="btn btn-success btn-sm px-2 fw-bold" 
+          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm" 
           onClick={irAtras} 
           disabled={indiceFecha === 0}
+          style={{ minWidth: '95px' }}
         >
-          ⬅️
+          ⬅️ Atrás
         </button>
         
         <div className="text-center">
-          <div className="text-muted small font-monospace" style={{ fontSize: '0.75rem' }}>
-            DÍA {indiceFecha + 1} DE {fechasDisponibles.length}
+          <div className="text-secondary small tracking-wider mb-1" style={{ fontSize: '0.75rem' }}>
+            JORNADA {indiceFecha + 1} / {fechasDisponibles.length}
           </div>
-          <h6 className="mb-0 fw-bold text-success text-capitalize small font-monospace">
+          <h5 className="mb-0 fw-black text-success text-capitalize tracking-wide font-monospace text-shadow-sm">
             {fechaFormateadaVisual}
           </h6>
         </div>
 
         <button 
-          className="btn btn-success btn-sm px-2 fw-bold" 
+          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm" 
           onClick={irSiguiente} 
           disabled={indiceFecha === fechasDisponibles.length - 1}
+          style={{ minWidth: '95px' }}
         >
-          ➡️
+          Siguiente ➡️
         </button>
       </div>
 
-      {/* ⚽ LISTA DE PARTIDOS FILTRADOS */}
-      <div className="row" style={{ maxHeight: '280px', overflowY: 'auto' }}>
+      {/* ⚽ LISTA DE TARJETAS INTERACTIVAS */}
+      <div className="row g-2 px-1" style={{ maxHeight: '330px', overflowY: 'auto' }}>
         {partidosDelDia.length === 0 ? (
-          <div className="text-center py-3 text-muted small">No hay partidos agendados para este día.</div>
+          <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary">
+            📅 No hay partidos registrados para esta fecha.
+          </div>
         ) : (
           partidosDelDia.map((partido) => {
             let horaStr = "00:00";
@@ -126,50 +173,85 @@ export default function MatchFixture({ usuarioId }) {
               horaStr = strCompleto.substring(11, 16);
             }
 
+            const valLocal = golesTemporales[`${partido.id}_local`] ?? "";
+            const valVisitante = golesTemporales[`${partido.id}_visitante`] ?? "";
+            const estaGuardando = guardandoId === partido.id;
+
             return (
-              <div key={partido.id} className="col-12 mb-2">
-                <div className="card shadow-sm border-0 border-start border-success border-3 bg-light">
-                  <div className="card-body p-2">
+              <div key={partido.id} className="col-12">
+                <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
+                  <div className="card-body p-2 pb-3">
                     
-                    <div className="text-center text-muted font-monospace mb-1" style={{ fontSize: '0.7rem' }}>
-                      Grupo {partido.grupo || 'U'} • 🕒 {horaStr} HS
+                    <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
+                      GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
                     </div>
                     
-                    <div className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex justify-content-between align-items-center px-1 mb-2">
                       
                       {/* Local */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img 
-                          src={partido.banderaL || 'https://placeholder.com'} 
+                          src={partido.banderaL || 'https://wikimedia.org'} 
                           alt={partido.local}
-                          className="rounded border shadow-sm mb-1"
-                          style={{ width: '30px', height: '18px', objectFit: 'cover' }}
+                          className="rounded border border-secondary shadow-sm mb-1"
+                          style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
                         />
-                        <div className="fw-bold text-truncate text-dark" style={{ fontSize: '0.75rem' }}>
+                        <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
                           {partido.local}
                         </div>
                       </div>
 
-                      {/* Marcador */}
-                      <div className="px-1 text-center" style={{ width: '30%' }}>
-                        <span className="badge bg-dark font-monospace px-2 py-1" style={{ fontSize: '0.8rem' }}>
-                          {partido.golesL} - {partido.golesV}
-                        </span>
+                      {/* 🛠️ INPUTS DE MARCADORES INTEGRADOS */}
+                      <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
+                        <input 
+                          type="number" 
+                          className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
+                          style={{ width: '38px', fontSize: '1rem', height: '34px' }}
+                          value={valLocal}
+                          onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
+                        />
+                        <span className="mx-1 text-secondary fw-bold">-</span>
+                        <input 
+                          type="number" 
+                          className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
+                          style={{ width: '38px', fontSize: '1rem', height: '34px' }}
+                          value={valVisitante}
+                          onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
+                        />
                       </div>
 
                       {/* Visitante */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img 
-                          src={partido.banderaV || 'https://placeholder.com'} 
+                          src={partido.banderaV || 'https://wikimedia.org'} 
                           alt={partido.visitante}
-                          className="rounded border shadow-sm mb-1"
-                          style={{ width: '30px', height: '18px', objectFit: 'cover' }}
+                          className="rounded border border-secondary shadow-sm mb-1"
+                          style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
                         />
-                        <div className="fw-bold text-truncate text-dark" style={{ fontSize: '0.75rem' }}>
+                        <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
                           {partido.visitante}
                         </div>
                       </div>
 
+                    </div>
+
+                    {/* 🛠️ BOTÓN INDEPENDIENTE PARA GUARDAR PRONÓSTICO */}
+                    <div className="text-center mt-2 px-4">
+                      <button 
+                        className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
+                        style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
+                        onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
+                        disabled={estaGuardando}
+                      >
+                        {estaGuardando ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                            Guardando...
+                          </>
+                        ) : "💾 GUARDAR PRONÓSTICO"}
+                      </button>
                     </div>
 
                   </div>
