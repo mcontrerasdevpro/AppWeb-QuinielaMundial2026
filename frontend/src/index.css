@@ -2,7 +2,7 @@
 
 body {
   background-color: #06140d;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.85)),
+  background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)),
                     url('./assets/copaMundial.jpeg');
   background-size: cover;
   background-repeat: no-repeat;
@@ -13,6 +13,7 @@ body {
   min-height: 100vh;
 }
 
+/* Animación del balón */
 @keyframes pulso-balon {
   0%, 100% {
     transform: scale(1) rotate(0deg);
@@ -28,37 +29,42 @@ body {
   animation: pulso-balon 3s infinite ease-in-out;
 }
 
+@keyframes parpadeo-texto {
+  0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(40, 167, 69, 0.8); }
+  50% { opacity: 0.3; text-shadow: none; }
+}
+
+.texto-parpadeante {
+  animation: parpadeo-texto 2s infinite ease-in-out;
+  color: #28a745;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
 .card {
   transition: transform 0.2s ease, box-shadow 0.2s ease !important;
 }
-
 .card:hover {
   transform: translateY(-3px) !important;
 }
-
 .border-success:hover {
   box-shadow: 0 0 20px rgba(25, 135, 84, 0.5) !important;
 }
-
 .border-warning:hover {
   box-shadow: 0 0 20px rgba(255, 193, 7, 0.5) !important;
 }
 
-@media (min-width: 992px) {
+@media (min-width: 768px) {
   .w-100.font-monospace {
-    margin-left: 38% !important;
-    max-width: 58% !important;
-    padding-top: 40px;
+    max-width: 480px !important;
+    margin: 0 auto !important;   
+    padding-top: 30px;
   }
 
   .row.g-2.px-1 {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 16px !important;
-    max-height: 75vh !important;
-  }
-
-  .col-12 {
-    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 62vh !important;
+    overflow-y: auto !important;
   }
 }

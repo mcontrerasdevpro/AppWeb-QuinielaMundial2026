@@ -8,8 +8,7 @@ export default function MatchFixture({ usuarioId }) {
   const [golesTemporales, setGolesTemporales] = useState({});
   const [cargando, setCargando] = useState(true);
   const [guardandoId, setGuardandoId] = useState(null);
-  
-  // 🆕 ESTADO PARA CONTROLAR LA PESTAÑA SELECCIONADA ("activos" o "resultados")
+
   const [vistaActiva, setVistaActiva] = useState("activos");
 
   const uid = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : 1;
@@ -68,6 +67,20 @@ export default function MatchFixture({ usuarioId }) {
   };
 
   const guardarPronosticoEnBaseDeDatos = async (partidoId) => {
+    const partidoActual = partidosTotales.find(p => p.id === partidoId);
+
+    if (partidoActual && partidoActual.fecha_hora) {
+      const ahora = new Date(); // Hora actual del dispositivo
+      const horaPartido = new Date(partidoActual.fecha_hora);
+
+      const diferenciaMinutos = (horaPartido - ahora) / (1000 * 60);
+
+      if (diferenciaMinutos < 10) {
+        alert("⚠️ ¡Apuesta cerrada! El sistema bloquea las modificaciones 10 minutos antes del partido. 🚫");
+        return;
+      }
+    }
+
     try {
       setGuardandoId(partidoId);
 
@@ -112,19 +125,15 @@ export default function MatchFixture({ usuarioId }) {
 
   const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-11";
 
-  // 🛠️ FILTRADO DINÁMICO SEGÚN LA PESTAÑA SELECCIONADA
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
     const pFechaLimpia = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
     if (pFechaLimpia !== fechaActual) return false;
 
-    // Tu API de Render debe devolver los goles reales del partido (ej: p.goles_real_l) para saber si ya terminó
-    // Si estás en resultados, filtramos solo partidos que ya tengan un resultado definitivo cargado por ti
     if (vistaActiva === "resultados") {
       return p.goles_real_l !== null && p.goles_real_v !== null && p.goles_real_l !== undefined;
     }
 
-    // Si estás en activos, muestra solo los partidos que aún no tienen un resultado oficial asignado
     return p.goles_real_l === null || p.goles_real_l === undefined;
   });
 
@@ -246,101 +255,101 @@ export default function MatchFixture({ usuarioId }) {
             const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
             const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
 
-          return (
-            <div key={partido.id} className="col-12">
-              <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
-                <div className="card-body p-2 pb-3">
+            return (
+              <div key={partido.id} className="col-12">
+                <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
+                  <div className="card-body p-2 pb-3">
 
-                  <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
-                    GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
-                  </div>
+                    <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
+                      GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
+                    </div>
 
-                  <div className="d-flex justify-content-between align-items-center px-1 mb-2">
+                    <div className="d-flex justify-content-between align-items-center px-1 mb-2">
 
-                    {/* Local */}
-                    <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                      <img
+                      {/* Local */}
+                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                        <img
                           src={`https://flagcdn.com/w40/${isoL}.png`}
                           alt={partido.local}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
                         />
                         <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
-                        {partido.local}
+                          {partido.local}
+                        </div>
                       </div>
-                    </div>
 
                       {/* INPUTS DE MARCADORES INTEGRADOS */}
-                     <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
-                      {vistaActiva === "resultados" ? (
-                        <div className="d-flex align-items-center bg-black bg-opacity-40 px-2 py-1 rounded border border-secondary gap-2 fw-bold text-warning" style={{ fontSize: '1.1rem' }}>
-                          <span>{partido.goles_real_local ?? 0}</span>
-                          <span className="text-muted" style={{ fontSize: '0.8rem' }}>-</span>
-                          <span>{partido.goles_real_visitante ?? 0}</span>
-                        </div>
-                      ) : (
-                        <>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
-                            style={{ width: '38px', fontSize: '1rem', height: '34px' }}
-                            value={valLocal}
-                            onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
-                          />
-                          <span className="mx-1 text-secondary fw-bold">-</span>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
-                            style={{ width: '38px', fontSize: '1rem', height: '34px' }}
-                            value={valVisitante}
-                            onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
-                          />
-                        </>
-                      )}
-                    </div>
+                      <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
+                        {vistaActiva === "resultados" ? (
+                          <div className="d-flex align-items-center bg-black bg-opacity-40 px-2 py-1 rounded border border-secondary gap-2 fw-bold text-warning" style={{ fontSize: '1.1rem' }}>
+                            <span>{partido.goles_real_local ?? 0}</span>
+                            <span className="text-muted" style={{ fontSize: '0.8rem' }}>-</span>
+                            <span>{partido.goles_real_visitante ?? 0}</span>
+                          </div>
+                        ) : (
+                          <>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
+                              style={{ width: '38px', fontSize: '1rem', height: '34px' }}
+                              value={valLocal}
+                              onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
+                            />
+                            <span className="mx-1 text-secondary fw-bold">-</span>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
+                              style={{ width: '38px', fontSize: '1rem', height: '34px' }}
+                              value={valVisitante}
+                              onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
+                            />
+                          </>
+                        )}
+                      </div>
 
-                    {/* Visitante */}
-                    <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                      <img
+                      {/* Visitante */}
+                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                        <img
                           src={`https://flagcdn.com/w40/${isoV}.png`}
                           alt={partido.visitante}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
                         />
-                         <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
-                        {partido.visitante}
+                        <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
+                          {partido.visitante}
+                        </div>
                       </div>
+
                     </div>
+
+                    {/* EL BOTÓN SOLO APARECE EN LA PESTAÑA ACTIVOS */}
+                    {vistaActiva === "activos" && (
+                      <div className="text-center mt-2 px-4">
+                        <button
+                          className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
+                          style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
+                          onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
+                          disabled={estaGuardando}
+                        >
+                          {estaGuardando ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                              Guardando...
+                            </>
+                          ) : "💾 GUARDAR PRONÓSTICO"}
+                        </button>
+                      </div>
+                    )}
 
                   </div>
-
-                  {/* EL BOTÓN SOLO APARECE EN LA PESTAÑA ACTIVOS */}
-                  {vistaActiva === "activos" && (
-                    <div className="text-center mt-2 px-4">
-                      <button
-                        className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
-                        style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
-                        onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
-                        disabled={estaGuardando}
-                      >
-                        {estaGuardando ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                            Guardando...
-                          </>
-                        ) : "💾 GUARDAR PRONÓSTICO"}
-                      </button>
-                    </div>
-                  )}
-
                 </div>
               </div>
-            </div>
-          );
-        })
-      )}
-    </div>
+            );
+          })
+        )}
+      </div>
 
-  </div>
-);
+    </div>
+  );
 }
