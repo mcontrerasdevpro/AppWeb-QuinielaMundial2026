@@ -2,20 +2,22 @@
 
 body {
   background-color: #06140d;
-  background-image: radial-gradient(circle at 50% 50%, #0e2e1b 0%, #06140d 70%);
+  background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.85)),
+                    url('./assets/copaMundial.jpeg');
+  background-size: cover;
+  background-repeat: no-repeat;
   background-attachment: fixed;
+  background-position: left center;
   color: #f8fafc;
   font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
 }
 
 @keyframes pulso-balon {
-
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1) rotate(0deg);
     box-shadow: 0 0 15px rgba(25, 135, 84, 0.4);
   }
-
   50% {
     transform: scale(1.06) rotate(8deg);
     box-shadow: 0 0 25px rgba(25, 135, 84, 0.7);
@@ -26,12 +28,37 @@ body {
   animation: pulso-balon 3s infinite ease-in-out;
 }
 
-body {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)),
-  url('./assets/copaMundial.jpeg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
 
-  background-position: left center;
+.card:hover {
+  transform: translateY(-3px) !important;
+}
+
+.border-success:hover {
+  box-shadow: 0 0 20px rgba(25, 135, 84, 0.5) !important;
+}
+
+.border-warning:hover {
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.5) !important;
+}
+
+@media (min-width: 992px) {
+  .w-100.font-monospace {
+    margin-left: 38% !important;
+    max-width: 58% !important;
+    padding-top: 40px;
+  }
+
+  .row.g-2.px-1 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+    max-height: 75vh !important;
+  }
+
+  .col-12 {
+    width: 100% !important;
+  }
 }
