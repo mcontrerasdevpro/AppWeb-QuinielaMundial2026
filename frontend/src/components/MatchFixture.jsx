@@ -64,7 +64,10 @@ export default function MatchFixture({ usuarioId }) {
   // Filtrado de partidos del día activo
   const fechaActual = fechasDisponibles[indiceFecha];
   const partidosDelDia = partidosTotales.filter(p => {
-    const pFecha = String(p.fecha_hora).includes('T') ? p.fecha_hora.split('T')[0] : p.fecha_hora.substring(0, 10);
+    if (!p.fecha_hora) return false;
+    const pFecha = String(p.fecha_hora).includes('T') 
+      ? String(p.fecha_hora).split('T')[0] 
+      : String(p.fecha_hora).substring(0, 10);
     return pFecha === fechaActual;
   });
 
@@ -101,10 +104,12 @@ export default function MatchFixture({ usuarioId }) {
       {/* ⚽ DETALLE DE LOS PARTIDOS DEL DÍA */}
       <div className="row">
         {partidosDelDia.map((partido) => {
-          // Obtención segura de hora hh:mm
-          const horaStr = partido.fecha_hora && partido.fecha_hora.includes('T') 
-            ? partido.fecha_hora.split('T')[1].substring(0, 5) 
-            : "00:00";
+          // Obtención segura de hora hh:mm usando el índice [1] del split
+          let horaStr = "00:00";
+          if (partido.fecha_hora && String(partido.fecha_hora).includes('T')) {
+            const partes = String(partido.fecha_hora).split('T');
+            if (partes[1]) horaStr = partes[1].substring(0, 5);
+          }
 
           return (
             <div key={partido.id} className="col-12 mb-3">
@@ -125,7 +130,7 @@ export default function MatchFixture({ usuarioId }) {
                         className="rounded border shadow-sm mb-1"
                         style={{ width: '35px', height: '23px', objectFit: 'cover' }}
                       />
-                      <div className="fw-bold text-truncate small">{partido.local}</div>
+                      <div className="fw-bold text-truncate small text-dark">{partido.local}</div>
                     </div>
 
                     {/* Marcador Registrado */}
@@ -143,7 +148,7 @@ export default function MatchFixture({ usuarioId }) {
                         className="rounded border shadow-sm mb-1"
                         style={{ width: '35px', height: '23px', objectFit: 'cover' }}
                       />
-                      <div className="fw-bold text-truncate small">{partido.visitante}</div>
+                      <div className="fw-bold text-truncate small text-dark">{partido.visitante}</div>
                     </div>
 
                   </div>
