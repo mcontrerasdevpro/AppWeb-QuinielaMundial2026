@@ -178,33 +178,50 @@ export default function MatchFixture({ usuarioId }) {
               horaStr = strCompleto.substring(11, 16);
             }
 
-            const valLocal = golesTemporales[`${partido.id}_local`] ?? "";
-            const valVisitante = golesTemporales[`${partido.id}_visitante`] ?? "";
+            const valLocal = golesTemporales[partido.id + "_local"] ?? "";
+            const valVisitante = golesTemporales[partido.id + "_visitante"] ?? "";
             const estaGuardando = guardandoId === partido.id;
 
-            // 🛠️ CÁLCULO SEGURO DE BANDERAS DE RESPALDO (FALLBACK)
-            const codigoLocal = partido.banderaL && String(partido.banderaL).length <= 3
-              ? String(partido.banderaL).toLowerCase()
-              : (partido.local === 'México' ? 'mx' : partido.local === 'Canadá' ? 'ca' : 'un');
+            // 🛠️ TRADUCTOR BLINDADO CONTRA TILDES Y MAYÚSCULAS DE NEON
+            const obtenerCodigoSeguro = (nombre, banderaNeon) => {
+              // 1. Si en Neon ya viene un código ISO limpio de 2 letras (como AU, SE, IE, KR)
+              if (banderaNeon && String(banderaNeon).trim().length === 2) {
+                return String(banderaNeon).trim().toLowerCase();
+              }
+              
+              // 2. Si viene la URL rota o incompleta, traducimos por el nombre plano limpiando tildes
+              const n = String(nombre).trim().toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Quita tildes (México -> mexico)
 
-            const codigoVisitante = partido.banderaV && String(partido.banderaV).length <= 3
-              ? String(partido.banderaV).toLowerCase()
-              : (partido.visitante === 'Ecuador' ? 'ec' : partido.visitante === 'Nigeria' ? 'ng' : 'un');
+              if (n === 'mexico') return 'mx';
+              if (n === 'ecuador') return 'ec';
+              if (n === 'canada') return 'ca';
+              if (n === 'nigeria') return 'ng';
+              if (n === 'australia') return 'au';
+              if (n === 'suecia') return 'se';
+              if (n === 'irlanda') return 'ie';
+              if (n === 'corea del sur') return 'kr';
+              
+              return 'un';
+            };
+
+            const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
+            const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
 
             return (
               <div key={partido.id} className="col-12">
                 <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
                   <div className="card-body p-2 pb-3">
-
+                    
                     <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
                       GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
                     </div>
-
+                    
                     <div className="d-flex justify-content-between align-items-center px-1 mb-2">
 
-                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                        <img
-                          src={"https://flagcdn.com" + codigoLocal + ".png"}
+                    <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                        <img 
+                          src={"https://flagcdn.com" + isoL + ".png"} 
                           alt={partido.local}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -216,16 +233,16 @@ export default function MatchFixture({ usuarioId }) {
 
                       {/* INPUTS DE MARCADORES INTEGRADOS */}
                       <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
-                        <input
-                          type="number"
+                        <input 
+                          type="number" 
                           className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
                           style={{ width: '38px', fontSize: '1rem', height: '34px' }}
                           value={valLocal}
                           onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
                         />
                         <span className="mx-1 text-secondary fw-bold">-</span>
-                        <input
-                          type="number"
+                        <input 
+                          type="number" 
                           className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
                           style={{ width: '38px', fontSize: '1rem', height: '34px' }}
                           value={valVisitante}
@@ -235,8 +252,8 @@ export default function MatchFixture({ usuarioId }) {
 
                       {/* Visitante */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                        <img
-                          src={"https://flagcdn.com" + codigoVisitante + ".png"}
+                        <img 
+                          src={"https://flagcdn.com" + isoV + ".png"} 
                           alt={partido.visitante}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -250,7 +267,7 @@ export default function MatchFixture({ usuarioId }) {
 
                     {/* BOTÓN INDEPENDIENTE PARA GUARDAR PRONÓSTICO */}
                     <div className="text-center mt-2 px-4">
-                      <button
+                      <button 
                         className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
                         style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
                         onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
