@@ -25,11 +25,11 @@ except Exception as e:
     print(f"⚠️ Nota en creación de tablas: {e}")
 
 app.add_middleware(
-        CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class UserCreate(BaseModel):
@@ -95,9 +95,7 @@ def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
         "usuario": usuario.nombre
     }
 
-# ==========================================
 # 3. ENDPOINT DE REGISTRO
-# ==========================================
 @app.post("/auth/register", status_code=201)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     email_exists = db.query(Usuario).filter(Usuario.email == user_data.email).first() 
@@ -118,12 +116,12 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         "id": nuevo_usuario.id
     }
 
-# 4. ENDPOINT DE FIXTURE DE PARTIDOS CORREGIDO PARA EL STRING DE NEON
+# 4. ENDPOINT DE FIXTURE DE PARTIDOS (CORREGIDO PARA PRODUCCIÓN)
 @app.get("/matches")
 @app.get("/api/matches")
 @app.get("/match")
 @app.get("/api/match")
-def get_matches(usuario_id: int = 1, dia: int = 15, db: Session = Depends(get_db)):
+def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
     try:
         query = text("""
             SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as banderaL,
@@ -139,35 +137,37 @@ def get_matches(usuario_id: int = 1, dia: int = 15, db: Session = Depends(get_db
         apuestas_usuario = db.query(Pronostico).filter(Pronostico.usuario_id == usuario_id).all()
         apuestas_map = {a.partido_id: (a.goles_local_pronostico, a.goles_visitante_pronostico) for a in apuestas_usuario}
 
-        fixture_filtrado = []
-        meses = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+        fixture_completo = []
         
         if result:
             for row in result:
                 f_raw = row["fecha_hora"]
                 f_obj = parser.parse(f_raw) if isinstance(f_raw, str) else f_raw
                 
-                if f_obj.day == int(dia):
-                    fecha_formateada = f"{f_obj.day} {meses[f_obj.month - 1]} - {f_obj.strftime('%H:%M')}"
-                    partido_id = row["id"]
-                    gL, gV = apuestas_map.get(partido_id, (0, 0))
+                # Enviamos formato ISO completo para que JS lo divida por la 'T' sin romperse
+                fecha_iso = f_obj.isoformat()
+                partido_id = row["id"]
+                gL, gV = apuestas_map.get(partido_id, (0, 0))
 
-                    fixture_filtrado.append({
-                        "id": partido_id, "grupo": row["grupo"], "fecha": fecha_formateada,
-                        "local": row["local"], "banderaL": row["banderaL"],
-                        "visitante": row["visitante"], "banderaV": row["banderaV"],
-                        "golesL": gL, "golesV": gV
-                    })
-            return fixture_filtrado
+                fixture_completo.append({
+                    "id": partido_id, 
+                    "grupo": row["grupo"], 
+                    "fecha_hora": fecha_iso,
+                    "local": row["local"], 
+                    "banderaL": row["banderaL"],
+                    "visitante": row["visitante"], 
+                    "banderaV": row["banderaV"],
+                    "golesL": gL, 
+                    "golesV": gV
+                })
+            return fixture_completo
             
     except Exception as e:
         print(f"⚠️ Alerta de sincronización en Neon: {e}")
         
     return []
 
-# ==========================================
 # 4.2 ENDPOINT DE PARTIDOS TERMINADOS (NEON)
-# ==========================================
 @app.get("/matches/finished")
 @app.get("/api/matches/finished")
 def get_finished_matches(db: Session = Depends(get_db)):
@@ -257,7 +257,7 @@ def get_user_predictions(usuario_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer de Neon: {str(e)}")
 
-# 6. CANAL WEBSOCKET (TIEMPO REAL)
+# 6. CANAL WEBSOCKET
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -270,9 +270,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception:
         manager.disconnect(websocket)
 
-# ==========================================
-# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN DE MARCADORES
-# ==========================================
+# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN (BLINDADO CONTRA VALORES NULL)
 @app.post("/matches/{partido_id}/finish")
 @app.post("/api/matches/{partido_id}/finish")
 def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: int, db: Session = Depends(get_db)):
@@ -304,7 +302,7 @@ def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: i
 
             usuario = db.query(Usuario).filter(Usuario.id == p.usuario_id).first()
             if usuario:
-                if not hasattr(usuario, 'puntos') or usuario.puntos is None:
+                if getattr(usuario, 'puntos', None) is None:
                     usuario.puntos = 0
                 usuario.puntos += puntos_ganados
 
@@ -316,15 +314,12 @@ def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: i
         print(f"❌ Error en finish_match: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==========================================
 # 7.2 ENDPOINT PARA EXPONER EL RANKING EN VIVO
-# ==========================================
 @app.get("/ranking")
 @app.get("/api/ranking")
 def get_ranking(db: Session = Depends(get_db)):
     try:
         usuarios_db = db.query(Usuario).all()
-        
         ranking_final = []
         for u in usuarios_db:
             ranking_final.append({
@@ -332,10 +327,8 @@ def get_ranking(db: Session = Depends(get_db)):
                 "nombre": u.nombre,
                 "puntos": u.puntos if (hasattr(u, 'puntos') and u.puntos is not None) else 0
             })
-            
         ranking_final.sort(key=lambda x: x["puntos"], reverse=True)
         return ranking_final
-        
     except Exception as e:
         print(f"⚠️ Alerta en ranking ORM: {e}")
         return [{"id": 1, "nombre": "Survi", "puntos": 0}]
@@ -348,7 +341,6 @@ def get_ranking(db: Session = Depends(get_db)):
 def get_global_stats(db: Session = Depends(get_db)):
     try:
         total_apuestas = db.query(Pronostico).count()
-        
         query_goles = text("""
             SELECT COALESCE(AVG(goles_local_pronostico + goles_visitante_pronostico), 0) as promedio 
             FROM pronosticos
@@ -388,13 +380,10 @@ def delete_user(usuario_id: int, db: Session = Depends(get_db)):
         usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-        
         db.execute(text("DELETE FROM pronosticos WHERE usuario_id = :uid"), {"uid": usuario_id})
-        
         db.delete(usuario)
         db.commit()
         return {"status": "success", "mensaje": "🗑️ ¡Usuario eliminado de la base de datos con éxito!"}
-        
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al borrar: {str(e)}")
