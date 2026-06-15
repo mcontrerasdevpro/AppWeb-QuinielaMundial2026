@@ -5,38 +5,60 @@ export default function MatchFixture({ usuarioId }) {
   const [partidosTotales, setPartidosTotales] = useState([]);
   const [fechasDisponibles, setFechasDisponibles] = useState([]);
   const [indiceFecha, setIndiceFecha] = useState(0);
-  const [golesTemporales, setGolesTemporales] = useState({}); // Cambios en vivo en inputs
+  const [golesTemporales, setGolesTemporales] = useState({});
   const [cargando, setCargando] = useState(true);
 
-  const cargarFixture = async () => {
-    try {
-      setCargando(true);
-      const respuesta = await api.get('/matches');
-      
-      if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
-        setPartidosTotales(respuesta.data);
-        
-        // Agrupamos las fechas únicas basándonos en la fecha_hora del partido
-        const fechas = [...new Set(respuesta.data.map(p => p.fecha_hora.split('T')[0]))].sort();
-        setFechasDisponibles(fechas);
-        
-        // Intentamos posicionar al hincha en la fecha de hoy o en el primer día
-        const hoyStr = new Date().toISOString().split('T')[0];
-        const idxHoy = fechas.indexOf(hoyStr);
-        setIndiceFecha(idxHoy !== -1 ? idxHoy : 0);
-      }
-    } catch (error) {
-      console.error("Error al cargar fixture:", error);
-    } finally {
-      setCargando(false);
-    }
-  };
-
   useEffect(() => {
+    const cargarFixture = async () => {
+      try {
+        setCargando(true);
+        const respuesta = await api.get('/matches');
+        
+        if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
+          setPartidosTotales(respuesta.data);
+          
+          const fechasUnicas = [...new Set(respuesta.data.map(p => {
+            if (!p.fecha_hora) return "2026-06-15";
+            return p.fecha_hora.split('T')[0];
+          }))].sort();
+          
+          setFechasDisponibles(fechasUnicas);
+          
+          const hoyStr = new Date().toISOString().split('T')[0];
+          const idxHoy = fechasUnicas.indexOf(hoyStr);
+          setIndiceFecha(idxHoy !== -1 ? idxHoy : 0);
+        }
+      } catch (error) {
+        console.error("❌ Error en fixture:", error);
+      } finally {
+        setCargando(false);
+      }
+    };
     cargarFixture();
   }, [usuarioId]);
 
-  // FUNCIÓN ASÍNCRONA PARA COMPARTIR LA PORRA CON TU SQUEMA DEFINITIVO
+  if (cargando) {
+    return (
+      <div className="text-center py-5 font-monospace text-success small">
+        <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+        ⚽ Cargando fixture oficial de Neon...
+      </div>
+    );
+  }
+
+  if (fechasDisponibles.length === 0) {
+    return <div className="text-center py-4 text-muted font-monospace small">📅 No hay partidos registrados en Neon.</div>;
+  }
+
+  const fechaActualStr = fechasDisponibles[indiceFecha];
+  const partidosDelDia = partidosTotales.filter(p => {
+    if (!p.fecha_hora) return false;
+    return p.fecha_hora.split('T')[0] === fechaActualStr;
+  });
+
+  const opcionesFecha = { weekday: 'long', day: 'numeric', month: 'long' };
+  const fechaFormateada = new Date(fechaActualStr + 'T00:00:00').toLocaleDateString('es-ES', opcionesFecha);
+
   const guardarPorra = async (partidoId) => {
     const gLocal = golesTemporales[`${partidoId}_local`] ?? "";
     const gVisitante = golesTemporales[`${partidoId}_visitante`] ?? "";
@@ -47,15 +69,13 @@ export default function MatchFixture({ usuarioId }) {
     }
 
     try {
-      // 🚀 CONEXIÓN DIRECTA CON TU MODELO 'PredictionCreate'
       await api.post('/pronosticos', {
-        usuario_id: usuarioId || 1, // Fallback si la sesión local está fría
+        usuario_id: usuarioId || 1,
         partido_id: partidoId,
         goles_local_pronostico: parseInt(gLocal),
         goles_visitante_pronostico: parseInt(gVisitante)
       });
-      
-      alert("🎰 ¡Porra guardada e inyectada con éxito definitivo en Neon!");
+      alert("🎰 ¡Porra inyectada con éxito definitivo en Neon!");
     } catch (error) {
       alert(`❌ Error al conectar con Neon: ${error.message}`);
     }
@@ -68,24 +88,9 @@ export default function MatchFixture({ usuarioId }) {
     }));
   };
 
-  if (cargando) {
-    return <div className="text-center py-5 font-monospace text-success small">⚽ Sincronizando calendario con Neon...</div>;
-  }
-
-  if (fechasDisponibles.length === 0) {
-    return <div className="text-center py-4 text-muted font-monospace small">📅 No hay partidos registrados en Neon.</div>;
-  }
-
-  const fechaActualStr = fechasDisponibles[indiceFecha];
-  const partidosDelDia = partidosTotales.filter(p => p.fecha_hora.split('T')[0] === fechaActualStr);
-
-  const opcionesFecha = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-  const fechaFormateada = new Date(fechaActualStr + 'T00:00:00').toLocaleDateString('es-ES', opcionesFecha);
-
   return (
     <div className="w-100 font-monospace">
       
-      {/* 🧭 NAV INTERACTIVA CON FLECHAS DE NAVEGACIÓN RESTABLECIDAS */}
       <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-40 p-2 rounded-3 border border-secondary border-opacity-20 shadow-sm">
         <button
           type="button"
@@ -111,7 +116,6 @@ export default function MatchFixture({ usuarioId }) {
         </button>
       </div>
 
-      {/* 🏟️ LISTADO DINÁMICO DE PARTIDOS CON TU MODELO */}
       <div className="d-flex flex-column gap-3">
         {partidosDelDia.map((partido) => {
           const valorLocal = golesTemporales[`${partido.id}_local`] ?? "";
@@ -120,7 +124,7 @@ export default function MatchFixture({ usuarioId }) {
           return (
             <div key={partido.id} className="card bg-dark bg-opacity-40 border-secondary border-opacity-20 text-white shadow-sm">
               <div className="card-header bg-transparent border-secondary border-opacity-10 d-flex justify-content-between align-items-center py-2" style={{ fontSize: '10px' }}>
-                <span className="text-muted fw-bold">⏳ ESTADO: {partido.estado || 'PROGRAMADO'}</span>
+                <span className="text-muted fw-bold">🕒 JORNADA • {partido.grupo}</span>
                 <span className="badge bg-secondary bg-opacity-20 text-success fw-bold text-uppercase">GRUPO {partido.grupo}</span>
               </div>
               <div className="card-body py-3 text-center">
