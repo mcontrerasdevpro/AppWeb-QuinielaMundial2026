@@ -398,3 +398,34 @@ def delete_user(usuario_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al borrar: {str(e)}")
+    
+# ==========================================
+# 🎰 ENDPOINT PARA GUARDAR O ACTUALIZAR PRONÓSTICOS (NEON)
+# ==========================================
+@app.post("/pronosticos")
+@app.post("/api/pronosticos")
+def guardar_pronostico(data: PredictionCreate, db: Session = Depends(get_db)):
+    try:
+        porra = db.query(Pronostico).filter(
+            Pronostico.usuario_id == data.usuario_id,
+            Pronostico.partido_id == data.partido_id
+        ).first()
+        
+        if porra:
+            porra.goles_local_pronostico = data.goles_local_pronostico
+            porra.goles_visitante_pronostico = data.goles_visitante_pronostico
+        else:
+            nueva_porra = Pronostico(
+                usuario_id=data.usuario_id,
+                partido_id=data.partido_id,
+                goles_local_pronostico=data.goles_local_pronostico,
+                goles_visitante_pronostico=data.goles_visitante_pronostico
+            )
+            db.add(nueva_porra)
+            
+        db.commit()
+        return {"status": "success", "mensaje": "🎰 ¡Porra inyectada de forma permanente en Neon!"}
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️ Error al guardar porra en Neon: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
