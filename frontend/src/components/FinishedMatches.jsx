@@ -8,22 +8,19 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        // 1. Intentamos traer los partidos desde tu ruta de finalizados
-        const respuesta = await api.get('/matches/finished');
-        
-        if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
-          setTerminados(respuesta.data);
-        } else {
-          // 🛠️ RESPALDO: Si /finished viene vacío, traemos todos los partidos y filtramos en el frontend
-          const respGeneral = await api.get('/matches');
-          if (respGeneral.data && Array.isArray(respGeneral.data)) {
-            // Filtramos los partidos que tengan un resultado real cargado en Neon
-            const filtrados = respGeneral.data.filter(p => p.goles_real_local !== null && p.goles_real_local !== undefined);
-            setTerminados(filtrados);
-          }
+        // 🛠️ LLAMAMOS A LA RUTA GENERAL QUE SÍ TRAE DATOS SEGUROS
+        const respuesta = await api.get('/matches');
+
+        if (respuesta.data && Array.isArray(respuesta.data)) {
+          // Filtramos en el frontend: solo los partidos que ya tienen goles reales en Neon
+          const filtrados = respuesta.data.filter(p =>
+            p.goles_real_local !== null &&
+            p.goles_real_local !== undefined
+          );
+          setTerminados(filtrados);
         }
       } catch (error) {
-        console.error("❌ Error al traer el historial de resultados:", error);
+        console.error("❌ Error al traer los resultados:", error);
       } finally {
         setCargando(false);
       }
@@ -31,7 +28,6 @@ export default function FinishedMatches() {
     cargarTerminados();
   }, []);
 
-  // TRADUCTOR SEGURO DE BANDERAS PARA COINCIDIR CON NEON
   const obtenerCodigoSeguro = (nombre, banderaNeon) => {
     if (banderaNeon && String(banderaNeon).trim().length === 2) {
       return String(banderaNeon).trim().toLowerCase();
@@ -80,22 +76,22 @@ export default function FinishedMatches() {
     return (
       <div className="text-center py-4 font-monospace text-success small">
         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-        ⚽ Cargando resultados oficiales de Neon...
+        ⚽ Conectando resultados con Neon...
       </div>
     );
   }
 
   if (terminados.length === 0) {
     return (
-      <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">      
+      <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">
         <p className="small mb-0 text-secondary text-uppercase" style={{ fontSize: '11px' }}>
-          🏁 No hay partidos finalizados cargados en el sistema aún.
+          🏁 No hay partidos finalizados cargados todavía.
         </p>
       </div>
     );
   }
 
-  return (
+   return (
     <div className="d-flex flex-column gap-2 w-100 font-monospace" style={{ maxHeight: '330px', overflowY: 'auto' }}>
       {terminados.map((partido) => {
         const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
@@ -108,7 +104,7 @@ export default function FinishedMatches() {
               {/* Local */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
-                  src={`https://flagcdn.com{isoL}.png`}
+                  src={`https://flagcdn.com/w40/${isoL}.png`}
                   alt={partido.local}
                   className="rounded border border-secondary shadow-sm mb-1"
                   style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -118,19 +114,19 @@ export default function FinishedMatches() {
                 </div>
               </div>
 
-              {/* Marcador Oficial */}
+              {/* Marcador */}
               <div className="col-3 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-50 border border-secondary rounded px-3 py-1 fw-bold text-warning h-100" style={{ fontSize: '1.1rem', minWidth: '70px' }}>
-                  <span>{partido.goles_real_local ?? partido.golesL ?? 0}</span>
+                  <span>{partido.goles_real_local ?? 0}</span>
                   <span className="text-muted mx-1">-</span>
-                  <span>{partido.goles_real_visitante ?? partido.golesV ?? 0}</span>
+                  <span>{partido.goles_real_visitante ?? 0}</span>
                 </div>
               </div>
 
               {/* Visitante */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
-                  src={`https://flagcdn.com{isoV}.png`}
+                  src={`https://flagcdn.com/w40/${isoV}.png`}
                   alt={partido.visitante}
                   className="rounded border border-secondary shadow-sm mb-1"
                   style={{ width: '32px', height: '20px', objectFit: 'cover' }}
