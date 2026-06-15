@@ -61,26 +61,21 @@ body {
 
 @media (min-width: 768px) {
   .w-100.font-monospace {
-    max-width: 480px !important;
-    margin: 0 auto !important;   
-    padding-top: 30px;
+    max-width: 440px !important; 
+    margin: 0 auto !important;  
+    padding-top: 20px;
   }
 
   .row.g-2.px-1 {
     display: flex !important;
     flex-direction: column !important;
-    max-height: 62vh !important;
+    max-height: 48vh !important; 
     overflow-y: auto !important;
   }
 
-  .border.border-secondary.bg-dark.bg-opacity-50,
-  .border.border-secondary-subtle,
-  div[style*="minHeight"] > div.border {
-    min-height: 540px !important; 
-    padding-top: 45px !important;
-    padding-bottom: 45px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important; 
+  .border.border-secondary.bg-dark.bg-opacity-50 {
+    min-height: 240px !important;
+    padding-top: 25px !important;
+    padding-bottom: 25px !important;
   }
 }
