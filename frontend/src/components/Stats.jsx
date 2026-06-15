@@ -10,7 +10,7 @@ export default function Stats() {
       try {
         setCargando(true);
         const respuesta = await api.get('/stats');
-        
+
         if (respuesta.data && typeof respuesta.data === 'object') {
           setMetricas(respuesta.data);
         } else {
@@ -43,7 +43,7 @@ export default function Stats() {
   return (
     <div className="w-100 mt-2 font-monospace text-white">
       <div className="d-flex flex-column gap-3">
-        
+
         <div className="row g-2 text-center">
           <div className="col-6">
             <div className="bg-secondary bg-opacity-10 border border-secondary border-opacity-30 rounded-3 p-3 shadow-sm">
@@ -61,12 +61,13 @@ export default function Stats() {
 
         <div className="bg-secondary bg-opacity-10 border border-secondary border-opacity-30 rounded-4 p-3 shadow-sm">
           <h6 className="text-center text-success fw-bold tracking-wider mb-3" style={{ fontSize: '12px' }}>📊 TENDENCIA DE APUESTAS</h6>
-          
+
           <div className="d-flex flex-column gap-2 small">
             <div>
-              <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
+              {/* 🛠️ FIJADO: Cambiado text-muted por text-light */}
+              <div className="d-flex justify-content-between mb-1 text-light" style={{ fontSize: '11px' }}>
                 <span>🏠 Victoria Local</span>
-                <span className="fw-bold text-white">{metricas.tendencies?.local ?? 33}%</span>
+                <span className="fw-bold text-success">{metricas.tendencies?.local ?? 33}%</span>
               </div>
               <div className="progress bg-dark" style={{ height: '8px' }}>
                 <div className="progress-bar bg-success" style={{ width: `${metricas.tendencies?.local ?? 33}%` }}></div>
@@ -74,9 +75,10 @@ export default function Stats() {
             </div>
 
             <div>
-              <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
+              {/* 🛠️ FIJADO: Cambiado text-muted por text-light */}
+              <div className="d-flex justify-content-between mb-1 text-light" style={{ fontSize: '11px' }}>
                 <span>🤝 Empate</span>
-                <span className="fw-bold text-white">{metricas.tendencies?.draw ?? 34}%</span>
+                <span className="fw-bold text-warning">{metricas.tendencies?.draw ?? 34}%</span>
               </div>
               <div className="progress bg-dark" style={{ height: '8px' }}>
                 <div className="progress-bar bg-warning" style={{ width: `${metricas.tendencies?.draw ?? 34}%` }}></div>
@@ -84,9 +86,10 @@ export default function Stats() {
             </div>
 
             <div>
-              <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
+              {/* 🛠️ FIJADO: Cambiado text-muted por text-light */}
+              <div className="d-flex justify-content-between mb-1 text-light" style={{ fontSize: '11px' }}>
                 <span>✈️ Victoria Visitante</span>
-                <span className="fw-bold text-white">{metricas.tendencies?.away ?? 33}%</span>
+                <span className="fw-bold text-info">{metricas.tendencies?.away ?? 33}%</span>
               </div>
               <div className="progress bg-dark" style={{ height: '8px' }}>
                 <div className="progress-bar bg-info" style={{ width: `${metricas.tendencies?.away ?? 33}%` }}></div>
