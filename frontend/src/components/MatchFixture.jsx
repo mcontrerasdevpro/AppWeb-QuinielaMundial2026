@@ -182,14 +182,11 @@ export default function MatchFixture({ usuarioId }) {
             const valVisitante = golesTemporales[partido.id + "_visitante"] ?? "";
             const estaGuardando = guardandoId === partido.id;
 
-            // 🛠️ TRADUCTOR BLINDADO CONTRA TILDES Y MAYÚSCULAS DE NEON
             const obtenerCodigoSeguro = (nombre, banderaNeon) => {
-              // 1. Si en Neon ya viene un código ISO limpio de 2 letras (como AU, SE, IE, KR)
               if (banderaNeon && String(banderaNeon).trim().length === 2) {
                 return String(banderaNeon).trim().toLowerCase();
               }
 
-              // 2. Si viene la URL rota o incompleta, traducimos por el nombre plano limpiando tildes
               const n = String(nombre).trim().toLowerCase()
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Quita tildes (México -> mexico)
 
@@ -201,6 +198,34 @@ export default function MatchFixture({ usuarioId }) {
               if (n === 'suecia') return 'se';
               if (n === 'irlanda') return 'ie';
               if (n === 'corea del sur') return 'kr';
+              if (n === 'estados unidos') return 'us';
+              if (n === 'espana') return 'es';
+              if (n === 'marruecos') return 'ma';
+              if (n === 'zambia') return 'zm';
+              if (n === 'argentina') return 'ar';
+              if (n === 'francia') return 'fr';
+              if (n === 'alemania') return 'de';
+              if (n === 'paises bajos') return 'nl';
+              if (n === 'brasil') return 'br';
+              if (n === 'italia') return 'it';
+              if (n === 'japon') return 'jp';
+              if (n === 'costa rica') return 'cr';
+              if (n === 'belgica') return 'be';
+              if (n === 'croacia') return 'hr';
+              if (n === 'portugal') return 'pt';
+              if (n === 'ghana') return 'gh';
+              if (n === 'uruguay') return 'uy';
+              if (n === 'inglaterra') return 'gb-eng';
+              if (n === 'colombia') return 'co';
+              if (n === 'senegal') return 'sn';
+              if (n === 'chile') return 'cl';
+              if (n === 'dinamarca') return 'dk';
+              if (n === 'peru') return 'pe';
+              if (n === 'suiza') return 'ch';
+              if (n === 'paraguay') return 'py';
+              if (n === 'camerun') return 'cm';
+              if (n === 'venezuela') return 've';
+              if (n === 'ucrania') return 'ua';
 
               return 'un';
             };
@@ -221,7 +246,7 @@ export default function MatchFixture({ usuarioId }) {
 
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com/40/${isoL}.png`}
+                          src={`https://flagcdn.com/w40/${isoL}.png`}
                           alt={partido.local}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
