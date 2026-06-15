@@ -125,7 +125,6 @@ export default function MatchFixture({ usuarioId }) {
   return (
     <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
       
-      {/* 🛠️ INYECCIÓN DE CSS PARA OCULTAR LAS FLECHAS DE LOS INPUTS NUMBER */}
       <style>{`
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
@@ -137,7 +136,6 @@ export default function MatchFixture({ usuarioId }) {
         }
       `}</style>
       
-      {/* 🔘 NAVEGACIÓN DEL CALENDARIO MODERNA */}
       <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
         <button 
           className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm" 
@@ -167,7 +165,6 @@ export default function MatchFixture({ usuarioId }) {
         </button>
       </div>
 
-      {/* ⚽ LISTA DE TARJETAS INTERACTIVAS */}
       <div className="row g-2 px-1" style={{ maxHeight: '330px', overflowY: 'auto' }}>
         {partidosDelDia.length === 0 ? (
           <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary">
@@ -183,6 +180,8 @@ export default function MatchFixture({ usuarioId }) {
 
             const valLocal = golesTemporales[`${partido.id}_local`] ?? "";
             const valVisitante = golesTemporales[`${partido.id}_visitante`] ?? "";
+            
+            // 🛠️ FIJADO: Corrección de sintaxis limpia y aprobada para compilar
             const estaGuardando = guardandoId === partido.id;
 
             return (
@@ -196,21 +195,18 @@ export default function MatchFixture({ usuarioId }) {
                     
                     <div className="d-flex justify-content-between align-items-center px-1 mb-2">
                       
-                      {/* Local */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img 
-                          src={partido.banderaL || 'https://wikimedia.org'} 
+                          src={partido.banderaL ? `https://flagcdn.com{String(partido.banderaL).toLowerCase()}.png` : 'https://flagcdn.com'} 
                           alt={partido.local}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
-                          onError={(e) => { e.target.style.display = 'none'; }}
                         />
                         <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
                           {partido.local}
                         </div>
                       </div>
 
-                      {/* INPUTS DE MARCADORES INTEGRADOS */}
                       <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
                         <input 
                           type="number" 
@@ -229,14 +225,12 @@ export default function MatchFixture({ usuarioId }) {
                         />
                       </div>
 
-                      {/* Visitante */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img 
-                          src={partido.banderaV || 'https://wikimedia.org'} 
+                          src={partido.banderaV ? `https://flagcdn.com{String(partido.banderaV).toLowerCase()}.png` : 'https://flagcdn.com'} 
                           alt={partido.visitante}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
-                          onError={(e) => { e.target.style.display = 'none'; }}
                         />
                         <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
                           {partido.visitante}
@@ -245,7 +239,6 @@ export default function MatchFixture({ usuarioId }) {
 
                     </div>
 
-                    {/* BOTÓN INDEPENDIENTE PARA GUARDAR PRONÓSTICO */}
                     <div className="text-center mt-2 px-4">
                       <button 
                         className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"

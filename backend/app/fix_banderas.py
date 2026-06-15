@@ -10,14 +10,13 @@ MAPEO_BANDERAS = {
     "Corea del Sur": "kr", "Marruecos": "ma", "Senegal": "sn", "Ghana": "gh",
     "Camerún": "cm", "Túnez": "tn", "Arabia Saudita": "sa", "Australia": "au",
     "Costa Rica": "cr", "Panamá": "pa", "Jamaica": "jm", "Honduras": "hn",
-    "Perú": "pe", "Ecuador": "ec", "Venezuela": "ve", "Paraguay": "py"
+    "Perú": "pe", "Venezuela": "ve", "Paraguay": "py", "Suecia": "se", "Irlanda": "ie"
 }
 
-def actualizar_banderas_en_neon():
+def actualizar_todas_las_banderas():
     db = SessionLocal()
     try:
-        print("⚡ Conectando a Neon para actualizar banderas reales...")
-        
+        print("⚡ Conectando a Neon para inyectar URLs corregidas...")
         equipos = db.execute(text("SELECT id, nombre FROM equipos")).mappings().all()
         
         contador = 0
@@ -26,9 +25,9 @@ def actualizar_banderas_en_neon():
             codigo_iso = MAPEO_BANDERAS.get(nombre)
             
             if codigo_iso:
-                url_real = f"https://flagcdn.com{codigo_iso}.png"
+                url_real = f"https://flagcdn.com/w40/{codigo_iso}.png"
             else:
-                url_real = "https://flagcdn.comun.png"
+                url_real = "https://flagcdn.com"
                 
             db.execute(
                 text("UPDATE equipos SET bandera_url = :url WHERE id = :id"),
@@ -37,7 +36,7 @@ def actualizar_banderas_en_neon():
             contador += 1
             
         db.commit()
-        print(f"🏆 ¡ÉXITO TOTAL! Se han inyectado {contador} banderas HD en tu base de datos Neon. 🔥")
+        print(f"🏆 ¡ÉXITO TOTAL! Se han inyectado {contador} banderas de forma impecable en Neon. 🔥")
     except Exception as e:
         db.rollback()
         print(f"❌ Error al inyectar: {e}")
@@ -45,4 +44,4 @@ def actualizar_banderas_en_neon():
         db.close()
 
 if __name__ == "__main__":
-    actualizar_banderas_en_neon()
+    actualizar_todas_las_banderas()
