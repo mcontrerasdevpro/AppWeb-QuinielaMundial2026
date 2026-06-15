@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://appweb-quinielamundial2026.onrender.com';
+const API_URL = 'https://api-quiniela-mundial-2026.onrender.com';
 
 const api = axios.create({
   baseURL: API_URL,
