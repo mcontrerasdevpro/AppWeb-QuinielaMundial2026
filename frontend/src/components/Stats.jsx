@@ -8,10 +8,22 @@ export default function Stats() {
   useEffect(() => {
     const cargarMetricas = async () => {
       try {
+        setCargando(true);
         const respuesta = await api.get('/stats');
-        setMetricas(respuesta.data);
+        
+        if (respuesta.data && typeof respuesta.data === 'object') {
+          setMetricas(respuesta.data);
+        } else {
+          throw new Error("Datos corruptos");
+        }
       } catch (error) {
-        console.log("Error al conectar con el servidor de estadísticas.");
+        console.error("⚠️ Alerta en servidor de estadísticas:", error);
+        // 🛠️ FALLBACK SEGURO: Si la API falla o está vacía, inicializamos datos estéticos neutros para no romper React
+        setMetricas({
+          total_predictions: 0,
+          average_goals: 0.0,
+          tendencies: { local: 33, draw: 34, away: 33 }
+        });
       } finally {
         setCargando(false);
       }
@@ -19,14 +31,18 @@ export default function Stats() {
     cargarMetricas();
   }, []);
 
-  if (cargando) {
-    return <div className="text-center py-4 text-secondary small">📊 Compilando analítica de la FIFA...</div>;
+  if (cargando || !metricas) {
+    return (
+      <div className="text-center py-5 font-monospace text-success small bg-dark bg-opacity-50 text-white rounded-4 border border-secondary my-3">
+        <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+        📊 Compilando analítica de la FIFA...
+      </div>
+    );
   }
 
   return (
     <div className="w-100 mt-2 font-monospace text-white">
       <div className="d-flex flex-column gap-3">
-        
         
         <div className="row g-2 text-center">
           <div className="col-6">
@@ -50,30 +66,30 @@ export default function Stats() {
             <div>
               <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
                 <span>🏠 Victoria Local</span>
-                <span className="fw-bold text-white">{metricas.tendencies.local}%</span>
+                <span className="fw-bold text-white">{metricas.tendencies?.local ?? 33}%</span>
               </div>
               <div className="progress bg-dark" style={{ height: '8px' }}>
-                <div className="progress-bar bg-success" style={{ width: `${metricas.tendencies.local}%` }}></div>
+                <div className="progress-bar bg-success" style={{ width: `${metricas.tendencies?.local ?? 33}%` }}></div>
               </div>
             </div>
 
             <div>
               <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
                 <span>🤝 Empate</span>
-                <span className="fw-bold text-white">{metricas.tendencies.draw}%</span>
+                <span className="fw-bold text-white">{metricas.tendencies?.draw ?? 34}%</span>
               </div>
               <div className="progress bg-dark" style={{ height: '8px' }}>
-                <div className="progress-bar bg-warning" style={{ width: `${metricas.tendencies.draw}%` }}></div>
+                <div className="progress-bar bg-warning" style={{ width: `${metricas.tendencies?.draw ?? 34}%` }}></div>
               </div>
             </div>
 
             <div>
               <div className="d-flex justify-content-between mb-1 text-muted" style={{ fontSize: '11px' }}>
                 <span>✈️ Victoria Visitante</span>
-                <span className="fw-bold text-white">{metricas.tendencies.away}%</span>
+                <span className="fw-bold text-white">{metricas.tendencies?.away ?? 33}%</span>
               </div>
               <div className="progress bg-dark" style={{ height: '8px' }}>
-                <div className="progress-bar bg-info" style={{ width: `${metricas.tendencies.away}%` }}></div>
+                <div className="progress-bar bg-info" style={{ width: `${metricas.tendencies?.away ?? 33}%` }}></div>
               </div>
             </div>
           </div>
