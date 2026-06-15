@@ -28,7 +28,6 @@ export default function MatchFixture({ usuarioId }) {
           setFechasDisponibles(fechasUnicas);
           setIndiceFecha(0);
 
-          // Inicializar los goles temporales con las apuestas guardadas que traiga Neon
           const estadoInicialGoles = {};
           respuesta.data.forEach(p => {
             estadoInicialGoles[`${p.id}_local`] = p.golesL !== undefined ? p.golesL : 0;
@@ -57,7 +56,6 @@ export default function MatchFixture({ usuarioId }) {
     if (indiceFecha < fechasDisponibles.length - 1) setIndiceFecha(indiceFecha + 1);
   };
 
-  // Manejador para actualizar el estado local mientras el usuario escribe los goles
   const handleCambioGoles = (partidoId, campo, valor) => {
     const numero = valor === "" ? "" : Math.max(0, parseInt(valor) || 0);
     setGolesTemporales(prev => ({
@@ -65,7 +63,7 @@ export default function MatchFixture({ usuarioId }) {
       [`${partidoId}_${campo}`]: numero
     }));
   };
-   const guardarPronosticoEnBaseDeDatos = async (partidoId) => {
+  const guardarPronosticoEnBaseDeDatos = async (partidoId) => {
     try {
       setGuardandoId(partidoId);
       
@@ -79,13 +77,11 @@ export default function MatchFixture({ usuarioId }) {
         goles_visitante_pronostico: Number(golesVisitante)
       };
 
-      console.log("🚀 Enviando pronóstico a Render:", payload);
       const respuesta = await api.post('/predictions', payload);
       
       if (respuesta.data && respuesta.data.status === "success") {
         alert("⚽ ¡Pronóstico guardado con éxito absoluto en Neon! 🔥");
         
-        // Actualizar la lista en memoria para sincronizar el estado guardado
         setPartidosTotales(prev => prev.map(p => {
           if (p.id === partidoId) {
             return { ...p, golesL: golesLocal, golesV: golesVisitante };
@@ -144,9 +140,10 @@ export default function MatchFixture({ usuarioId }) {
           <div className="text-secondary small tracking-wider mb-1" style={{ fontSize: '0.75rem' }}>
             JORNADA {indiceFecha + 1} / {fechasDisponibles.length}
           </div>
+          {/* 🛠️ ENLAZADO CORRECTO: h5 cierra perfectamente con h5 */}
           <h5 className="mb-0 fw-black text-success text-capitalize tracking-wide font-monospace text-shadow-sm">
             {fechaFormateadaVisual}
-          </h6>
+          </h5>
         </div>
 
         <button 
@@ -202,7 +199,7 @@ export default function MatchFixture({ usuarioId }) {
                         </div>
                       </div>
 
-                      {/* 🛠️ INPUTS DE MARCADORES INTEGRADOS */}
+                      {/* INPUTS DE MARCADORES INTEGRADOS */}
                       <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
                         <input 
                           type="number" 
@@ -237,7 +234,7 @@ export default function MatchFixture({ usuarioId }) {
 
                     </div>
 
-                    {/* 🛠️ BOTÓN INDEPENDIENTE PARA GUARDAR PRONÓSTICO */}
+                    {/* BOTÓN INDEPENDIENTE PARA GUARDAR PRONÓSTICO */}
                     <div className="text-center mt-2 px-4">
                       <button 
                         className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
