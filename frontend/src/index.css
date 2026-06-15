@@ -13,7 +13,6 @@ body {
   min-height: 100vh;
 }
 
-/* Animación del balón */
 @keyframes pulso-balon {
   0%, 100% {
     transform: scale(1) rotate(0deg);
@@ -30,13 +29,19 @@ body {
 }
 
 @keyframes parpadeo-texto {
-  0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(40, 167, 69, 0.8); }
-  50% { opacity: 0.3; text-shadow: none; }
+  0%, 100% { 
+    opacity: 1; 
+    text-shadow: 0 0 12px rgba(40, 167, 69, 0.9), 0 0 20px rgba(25, 135, 84, 0.4); 
+  }
+  50% { 
+    opacity: 0.15; 
+    text-shadow: none; 
+  }
 }
 
 .texto-parpadeante {
-  animation: parpadeo-texto 2s infinite ease-in-out;
-  color: #28a745;
+  animation: parpadeo-texto 2s infinite ease-in-out !important;
+  color: #28a745 !important;
   font-weight: bold;
   letter-spacing: 1px;
 }
@@ -66,5 +71,16 @@ body {
     flex-direction: column !important;
     max-height: 62vh !important;
     overflow-y: auto !important;
+  }
+
+  .border.border-secondary.bg-dark.bg-opacity-50,
+  .border.border-secondary-subtle,
+  div[style*="minHeight"] > div.border {
+    min-height: 540px !important; 
+    padding-top: 45px !important;
+    padding-bottom: 45px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important; 
   }
 }
