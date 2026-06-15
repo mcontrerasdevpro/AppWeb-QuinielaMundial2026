@@ -125,6 +125,18 @@ export default function MatchFixture({ usuarioId }) {
   return (
     <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
       
+      {/* 🛠️ INYECCIÓN DE CSS PARA OCULTAR LAS FLECHAS DE LOS INPUTS NUMBER */}
+      <style>{`
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+      
       {/* 🔘 NAVEGACIÓN DEL CALENDARIO MODERNA */}
       <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
         <button 
@@ -140,7 +152,6 @@ export default function MatchFixture({ usuarioId }) {
           <div className="text-secondary small tracking-wider mb-1" style={{ fontSize: '0.75rem' }}>
             JORNADA {indiceFecha + 1} / {fechasDisponibles.length}
           </div>
-          {/* 🛠️ ENLAZADO CORRECTO: h5 cierra perfectamente con h5 */}
           <h5 className="mb-0 fw-black text-success text-capitalize tracking-wide font-monospace text-shadow-sm">
             {fechaFormateadaVisual}
           </h5>
