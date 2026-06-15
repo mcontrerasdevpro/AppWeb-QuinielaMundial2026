@@ -8,19 +8,20 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        // 🛠️ USAMOS LA RUTA GENERAL QUE SÍ TRAE DATOS SEGUROS EN LUGAR DE /matches/finished
+        // Consultamos la ruta general que sí devuelve los datos de la tabla partidos
         const respuesta = await api.get('/matches?usuario_id=1');
         
         if (respuesta.data && Array.isArray(respuesta.data)) {
-          // Filtramos en el frontend: nos quedamos solo con los partidos que tienen goles reales en Neon
+          // FILTRADO REAL: Filtramos los partidos que ya tienen goles oficiales cargados en Neon
           const filtrados = respuesta.data.filter(p => 
             p.goles_real_local !== null && 
-            p.goles_real_local !== undefined
+            p.goles_real_local !== undefined &&
+            p.goles_real_local !== ""
           );
           setTerminados(filtrados);
         }
       } catch (error) {
-        console.error("❌ Error al traer los resultados:", error);
+        console.error("❌ Error al traer los resultados oficiales:", error);
       } finally {
         setCargando(false);
       }
@@ -76,7 +77,7 @@ export default function FinishedMatches() {
     return (
       <div className="text-center py-4 font-monospace text-success small">
         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-        ⚽ Buscando partidos terminados en Neon...
+        ⚽ Sincronizando marcadores con Neon...
       </div>
     );
   }
@@ -85,7 +86,7 @@ export default function FinishedMatches() {
     return (
       <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">      
         <p className="small mb-0 text-secondary text-uppercase" style={{ fontSize: '11px' }}>
-          🏁 No hay partidos finalizados cargados todavía.
+          🏁 No hay partidos finalizados cargados en el sistema aún.
         </p>
       </div>
     );
@@ -114,7 +115,7 @@ export default function FinishedMatches() {
                 </div>
               </div>
 
-              {/* Marcador Real */}
+              {/* MARCADOR REAL CON LAS COLUMNAS EXACTAS DE NEON */}
               <div className="col-3 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-50 border border-secondary rounded px-3 py-1 fw-bold text-warning h-100" style={{ fontSize: '1.1rem', minWidth: '70px' }}>
                   <span>{partido.goles_real_local ?? 0}</span>
