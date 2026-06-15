@@ -8,10 +8,15 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        const respuesta = await api.get('/matches');
+        // 🛠️ USAMOS LA RUTA GENERAL QUE SÍ TRAE DATOS SEGUROS EN LUGAR DE /matches/finished
+        const respuesta = await api.get('/matches?usuario_id=1');
+        
         if (respuesta.data && Array.isArray(respuesta.data)) {
-          // Filtramos basándonos en que los goles ya estén registrados en Neon
-          const filtrados = respuesta.data.filter(p => p.goles_real_local !== null && p.goles_real_local !== undefined);
+          // Filtramos en el frontend: nos quedamos solo con los partidos que tienen goles reales en Neon
+          const filtrados = respuesta.data.filter(p => 
+            p.goles_real_local !== null && 
+            p.goles_real_local !== undefined
+          );
           setTerminados(filtrados);
         }
       } catch (error) {
@@ -71,14 +76,14 @@ export default function FinishedMatches() {
     return (
       <div className="text-center py-4 font-monospace text-success small">
         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-        ⚽ Conectando resultados con Neon...
+        ⚽ Buscando partidos terminados en Neon...
       </div>
     );
   }
 
   if (terminados.length === 0) {
     return (
-      <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">
+      <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">      
         <p className="small mb-0 text-secondary text-uppercase" style={{ fontSize: '11px' }}>
           🏁 No hay partidos finalizados cargados todavía.
         </p>
@@ -95,7 +100,7 @@ export default function FinishedMatches() {
         return (
           <div key={partido.id} className="card shadow border-0 border-start border-warning border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary p-2">
             <div className="row align-items-center justify-content-between g-0">
-
+              
               {/* Local */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
@@ -109,12 +114,12 @@ export default function FinishedMatches() {
                 </div>
               </div>
 
-              {/* Marcador */}
+              {/* Marcador Real */}
               <div className="col-3 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-50 border border-secondary rounded px-3 py-1 fw-bold text-warning h-100" style={{ fontSize: '1.1rem', minWidth: '70px' }}>
-                  <span>{partido.goles_real_local}</span>
+                  <span>{partido.goles_real_local ?? 0}</span>
                   <span className="text-muted mx-1">-</span>
-                  <span>{partido.goles_real_visitante}</span>
+                  <span>{partido.goles_real_visitante ?? 0}</span>
                 </div>
               </div>
 
