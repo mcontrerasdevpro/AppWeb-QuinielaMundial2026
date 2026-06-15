@@ -1,1 +1,0 @@
-# AppWeb-QuinielaMundial2026
