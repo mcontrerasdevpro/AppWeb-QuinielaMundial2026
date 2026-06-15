@@ -10,7 +10,7 @@ export default function Dashboard({ onLogout, userSession }) {
 
   return (
     <div className="w-100 font-monospace">
-      
+
       {/* CABECERA DE USUARIO */}
       <div className="d-flex justify-content-between align-items-center bg-dark bg-opacity-50 p-3 rounded-3 border border-secondary border-opacity-20 mb-3 shadow-sm">
         <div className="d-flex align-items-center gap-2">
@@ -24,7 +24,7 @@ export default function Dashboard({ onLogout, userSession }) {
 
       {/* CONTENEDOR PRINCIPAL DINÁMICO */}
       <div className="mb-4" style={{ minHeight: '420px' }}>
-        
+
         {/* PESTAÑA 1: PARTIDOS */}
         {activeTab === 'partidos' && (
           <div>
@@ -47,52 +47,49 @@ export default function Dashboard({ onLogout, userSession }) {
             </div>
 
             {/* CONDICIONAL EXCLUSIVO */}
-              {subFiltroPartidos === 'activos' ? (
+            {subFiltroPartidos === 'activos' ? (
               <MatchFixture usuarioId={userSession?.id} />
             ) : (
-              <div>
-                <FinishedMatches />              
-                
-              </div>
+              <FinishedMatches />
             )}
           </div>
         )}
 
         {/* PESTAÑA 2: RANKING */}
-         {activeTab === 'ranking' && <Leaderboard usuarioLogueadoId={userSession?.id} />}
+        {activeTab === 'ranking' && <Leaderboard usuarioLogueadoId={userSession?.id} />}
 
         {/* PESTAÑA 3: ESTADÍSTICAS */}
         {activeTab === 'stats' && <Stats />}
 
-      </div>
+          </div>
 
       {/* NAV BAR INFERIOR */}
-      <div className="nav nav-pills justify-content-around bg-dark bg-opacity-70 p-2 rounded-4 border border-secondary border-opacity-30 shadow-lg">
-        <button 
-          onClick={() => { setActiveTab('partidos'); setSubFiltroPartidos('activos'); }} 
-          className={`nav-link d-flex flex-column align-items-center py-2 px-3 rounded-3 transition-all ${activeTab === 'partidos' ? 'active bg-success text-dark' : 'text-secondary bg-transparent'}`}
-        >
-          <span className="fs-5 mb-1">📅</span>
-          <span className="fw-bold" style={{ fontSize: '9px' }}>PARTIDOS</span>
-        </button>
+        <div className="nav nav-pills justify-content-around bg-dark bg-opacity-70 p-2 rounded-4 border border-secondary border-opacity-30 shadow-lg">
+          <button
+            onClick={() => { setActiveTab('partidos'); setSubFiltroPartidos('activos'); }}
+            className={`nav-link d-flex flex-column align-items-center py-2 px-3 rounded-3 transition-all ${activeTab === 'partidos' ? 'active bg-success text-dark' : 'text-secondary bg-transparent'}`}
+          >
+            <span className="fs-5 mb-1">📅</span>
+            <span className="fw-bold" style={{ fontSize: '9px' }}>PARTIDOS</span>
+          </button>
 
-        <button 
-          onClick={() => setActiveTab('ranking')} 
-          className={`nav-link d-flex flex-column align-items-center py-2 px-3 rounded-3 transition-all ${activeTab === 'ranking' ? 'active bg-success text-dark' : 'text-secondary bg-transparent'}`}
-        >
-          <span className="fs-5 mb-1">🥇</span>
-          <span className="fw-bold" style={{ fontSize: '9px' }}>RANKING</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('ranking')}
+            className={`nav-link d-flex flex-column align-items-center py-2 px-3 rounded-3 transition-all ${activeTab === 'ranking' ? 'active bg-success text-dark' : 'text-secondary bg-transparent'}`}
+          >
+            <span className="fs-5 mb-1">🥇</span>
+            <span className="fw-bold" style={{ fontSize: '9px' }}>RANKING</span>
+          </button>
 
-        <button 
-          onClick={() => setActiveTab('stats')} 
-          className={`nav-link d-flex flex-column align-items-center py-2 px-3 rounded-3 transition-all ${activeTab === 'stats' ? 'active bg-success text-dark' : 'text-secondary bg-transparent'}`}
-        >
-          <span className="fs-5 mb-1">📊</span>
-          <span className="fw-bold" style={{ fontSize: '9px' }}>STATS</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`nav-link d-flex flex-column align-items-center py-2 px-3 rounded-3 transition-all ${activeTab === 'stats' ? 'active bg-success text-dark' : 'text-secondary bg-transparent'}`}
+          >
+            <span className="fs-5 mb-1">📊</span>
+            <span className="fw-bold" style={{ fontSize: '9px' }}>STATS</span>
+          </button>
+        </div>
+
       </div>
-
-    </div>
-  );
+      );
 }
