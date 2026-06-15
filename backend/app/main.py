@@ -9,6 +9,9 @@ from app.models.tables import Usuario, Partido, Equipo, Pronostico
 from dateutil import parser
 import datetime 
 
+from app.models.tables import Base, engine
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title="API Quiniela Mundial 2026",
     description="Backend en Python de alta velocidad listo para operar.",
