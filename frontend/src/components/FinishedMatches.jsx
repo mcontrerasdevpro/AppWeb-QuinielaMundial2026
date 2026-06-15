@@ -8,16 +8,20 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        // Consultamos la ruta general que sí devuelve los datos de la tabla partidos
+        // Consultamos la ruta general que ya sabemos que responde con éxito en tu app
         const respuesta = await api.get('/matches?usuario_id=1');
         
         if (respuesta.data && Array.isArray(respuesta.data)) {
-          // FILTRADO REAL: Filtramos los partidos que ya tienen goles oficiales cargados en Neon
-          const filtrados = respuesta.data.filter(p => 
-            p.goles_real_local !== null && 
-            p.goles_real_local !== undefined &&
-            p.goles_real_local !== ""
-          );
+          // Obtenemos el día de hoy lunes en formato YYYY-MM-DD (2026-06-15)
+          const hoyStr = new Date().toISOString().substring(0, 10);
+
+          // FILTRADO POR CALENDARIO: Consideramos jugados todos los partidos anteriores a hoy lunes
+          const filtrados = respuesta.data.filter(p => {
+            if (!p.fecha_hora) return false;
+            const pFecha = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
+            return pFecha < hoyStr; // Si se programó antes del 15 de junio, entra en resultados
+          });
+
           setTerminados(filtrados);
         }
       } catch (error) {
@@ -77,7 +81,7 @@ export default function FinishedMatches() {
     return (
       <div className="text-center py-4 font-monospace text-success small">
         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-        ⚽ Sincronizando marcadores con Neon...
+        ⚽ Sincronizando marcadores con Neon y Render...
       </div>
     );
   }
@@ -86,7 +90,7 @@ export default function FinishedMatches() {
     return (
       <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">      
         <p className="small mb-0 text-secondary text-uppercase" style={{ fontSize: '11px' }}>
-          🏁 No hay partidos finalizados cargados en el sistema aún.
+          🏁 No hay partidos finalizados para mostrar todavía.
         </p>
       </div>
     );
@@ -115,12 +119,12 @@ export default function FinishedMatches() {
                 </div>
               </div>
 
-              {/* MARCADOR REAL CON LAS COLUMNAS EXACTAS DE NEON */}
+              {/* MARCADOR REAL MUNDIAL (Usa las columnas seguras de tu tabla partidos) */}
               <div className="col-3 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-50 border border-secondary rounded px-3 py-1 fw-bold text-warning h-100" style={{ fontSize: '1.1rem', minWidth: '70px' }}>
-                  <span>{partido.goles_real_local ?? 0}</span>
+                  <span>{partido.goles_local ?? 0}</span>
                   <span className="text-muted mx-1">-</span>
-                  <span>{partido.goles_real_visitante ?? 0}</span>
+                  <span>{partido.goles_visitante ?? 0}</span>
                 </div>
               </div>
 
