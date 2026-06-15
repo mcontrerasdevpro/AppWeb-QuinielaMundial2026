@@ -16,15 +16,15 @@ export default function MatchFixture({ usuarioId }) {
       try {
         setCargando(true);
         const respuesta = await api.get(`/matches?usuario_id=${uid}`);
-        
+
         if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
           setPartidosTotales(respuesta.data);
-          
+
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
             if (!p.fecha_hora) return "2026-06-11";
             return String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
           }))].sort();
-          
+
           setFechasDisponibles(fechasUnicas);
           setIndiceFecha(0);
 
@@ -66,7 +66,7 @@ export default function MatchFixture({ usuarioId }) {
   const guardarPronosticoEnBaseDeDatos = async (partidoId) => {
     try {
       setGuardandoId(partidoId);
-      
+
       const golesLocal = golesTemporales[`${partidoId}_local`] || 0;
       const golesVisitante = golesTemporales[`${partidoId}_visitante`] || 0;
 
@@ -78,10 +78,10 @@ export default function MatchFixture({ usuarioId }) {
       };
 
       const respuesta = await api.post('/predictions', payload);
-      
+
       if (respuesta.data && respuesta.data.status === "success") {
         alert("⚽ ¡Pronóstico guardado con éxito absoluto en Neon! 🔥");
-        
+
         setPartidosTotales(prev => prev.map(p => {
           if (p.id === partidoId) {
             return { ...p, golesL: golesLocal, golesV: golesVisitante };
@@ -107,7 +107,7 @@ export default function MatchFixture({ usuarioId }) {
   }
 
   const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-11";
-  
+
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
     const pFechaLimpia = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
@@ -124,7 +124,7 @@ export default function MatchFixture({ usuarioId }) {
 
   return (
     <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
-      
+
       <style>{`
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
@@ -135,17 +135,17 @@ export default function MatchFixture({ usuarioId }) {
           -moz-appearance: textfield;
         }
       `}</style>
-      
+
       <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
-        <button 
-          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm" 
-          onClick={irAtras} 
+        <button
+          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
+          onClick={irAtras}
           disabled={indiceFecha === 0}
           style={{ minWidth: '95px' }}
         >
           ⬅️ Atrás
         </button>
-        
+
         <div className="text-center">
           <div className="text-secondary small tracking-wider mb-1" style={{ fontSize: '0.75rem' }}>
             JORNADA {indiceFecha + 1} / {fechasDisponibles.length}
@@ -155,9 +155,9 @@ export default function MatchFixture({ usuarioId }) {
           </h5>
         </div>
 
-        <button 
-          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm" 
-          onClick={irSiguiente} 
+        <button
+          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
+          onClick={irSiguiente}
           disabled={indiceFecha === fechasDisponibles.length - 1}
           style={{ minWidth: '95px' }}
         >
@@ -180,7 +180,7 @@ export default function MatchFixture({ usuarioId }) {
 
             const valLocal = golesTemporales[`${partido.id}_local`] ?? "";
             const valVisitante = golesTemporales[`${partido.id}_visitante`] ?? "";
-            
+
             // 🛠️ FIJADO: Corrección de sintaxis limpia y aprobada para compilar
             const estaGuardando = guardandoId === partido.id;
 
@@ -188,16 +188,20 @@ export default function MatchFixture({ usuarioId }) {
               <div key={partido.id} className="col-12">
                 <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
                   <div className="card-body p-2 pb-3">
-                    
+
                     <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
                       GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
                     </div>
-                    
+
                     <div className="d-flex justify-content-between align-items-center px-1 mb-2">
-                      
+
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                        <img 
-                          src={partido.banderaL ? `https://flagcdn.com{String(partido.banderaL).toLowerCase()}.png` : 'https://flagcdn.com'} 
+                        <img
+                          src={
+                            partido.banderaL && String(partido.banderaL).length <= 3
+                              ? `https://flagcdn.com{String(partido.banderaL).toLowerCase()}.png`
+                              : `https://flagcdn.com{partido.local === 'México' ? 'mx' : partido.local === 'Canadá' ? 'ca' : 'un'}.png`
+                          }
                           alt={partido.local}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -208,16 +212,16 @@ export default function MatchFixture({ usuarioId }) {
                       </div>
 
                       <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
                           style={{ width: '38px', fontSize: '1rem', height: '34px' }}
                           value={valLocal}
                           onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
                         />
                         <span className="mx-1 text-secondary fw-bold">-</span>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
                           style={{ width: '38px', fontSize: '1rem', height: '34px' }}
                           value={valVisitante}
@@ -226,8 +230,12 @@ export default function MatchFixture({ usuarioId }) {
                       </div>
 
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                        <img 
-                          src={partido.banderaV ? `https://flagcdn.com{String(partido.banderaV).toLowerCase()}.png` : 'https://flagcdn.com'} 
+                        <img
+                          src={
+                            partido.banderaV && String(partido.banderaV).length <= 3
+                              ? `https://flagcdn.com{String(partido.banderaV).toLowerCase()}.png`
+                              : `https://flagcdn.com{partido.visitante === 'Ecuador' ? 'ec' : partido.visitante === 'Nigeria' ? 'ng' : 'un'}.png`
+                          }
                           alt={partido.visitante}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -240,7 +248,7 @@ export default function MatchFixture({ usuarioId }) {
                     </div>
 
                     <div className="text-center mt-2 px-4">
-                      <button 
+                      <button
                         className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
                         style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
                         onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
