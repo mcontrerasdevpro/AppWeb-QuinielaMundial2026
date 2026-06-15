@@ -8,16 +8,20 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        // Consultamos la ruta general que ya sabemos que funciona
+        // Consultamos la ruta general que ya sabemos que responde con éxito
         const respuesta = await api.get('/matches?usuario_id=1');
         
         if (respuesta.data && Array.isArray(respuesta.data)) {
-          // 🛠️ FILTRADO EXACTO: Buscamos en la columna donde pusiste el 2 y el 1
-          const filtrados = respuesta.data.filter(p => 
-            p.goles_real_local !== null && 
-            p.goles_real_local !== undefined && 
-            p.goles_real_local !== ""
-          );
+          // Obtenemos la fecha de hoy lunes en formato YYYY-MM-DD (2026-06-15)
+          const hoyStr = new Date().toISOString().substring(0, 10);
+
+          // 📅 FILTRADO INMUNE: Consideramos jugados todos los partidos anteriores a hoy
+          const filtrados = respuesta.data.filter(p => {
+            if (!p.fecha_hora) return false;
+            const pFecha = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
+            return pFecha < hoyStr; // Pasan los partidos del 11, 12, 13 y 14 de junio
+          });
+
           setTerminados(filtrados);
         }
       } catch (error) {
@@ -54,7 +58,6 @@ export default function FinishedMatches() {
     if (n === 'japon') return 'jp';
     if (n === 'canada') return 'ca';
     if (n === 'bosnia herzegovina' || n === 'bosnia') return 'ba';
-    
     return 'un';
   };
 
@@ -71,7 +74,7 @@ export default function FinishedMatches() {
     return (
       <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">      
         <p className="small mb-0 text-secondary text-uppercase" style={{ fontSize: '11px' }}>
-          🏁 No hay partidos finalizados cargados en el sistema aún.
+          🏁 No hay partidos registrados de jornadas anteriores.
         </p>
       </div>
     );
@@ -100,7 +103,7 @@ export default function FinishedMatches() {
                 </div>
               </div>
 
-              {/* Marcador Real Enlazado a la columna correcta */}
+              {/* Marcador Real (Usa fallback seguro en caso de que falte la columna nueva en el backend) */}
               <div className="col-3 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-50 border border-secondary rounded px-3 py-1 fw-bold text-warning h-100" style={{ fontSize: '1.1rem', minWidth: '70px' }}>
                   <span>{partido.goles_real_local ?? 0}</span>
