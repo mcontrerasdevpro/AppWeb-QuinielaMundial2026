@@ -8,18 +8,13 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        // Consultamos la ruta general que ya sabemos que responde con éxito
         const respuesta = await api.get('/matches?usuario_id=1');
         
         if (respuesta.data && Array.isArray(respuesta.data)) {
-          // Obtenemos la fecha de hoy lunes en formato YYYY-MM-DD (2026-06-15)
-          const hoyStr = new Date().toISOString().substring(0, 10);
-
-          // 📅 FILTRADO INMUNE: Consideramos jugados todos los partidos anteriores a hoy
           const filtrados = respuesta.data.filter(p => {
-            if (!p.fecha_hora) return false;
-            const pFecha = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
-            return pFecha < hoyStr; // Pasan los partidos del 11, 12, 13 y 14 de junio
+            return p.goles_real_local !== null && 
+                   p.goles_real_local !== undefined && 
+                   p.goles_real_local !== "";
           });
 
           setTerminados(filtrados);
