@@ -8,14 +8,13 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        // 🛠️ LLAMAMOS A LA RUTA GENERAL QUE SÍ TRAE DATOS SEGUROS
         const respuesta = await api.get('/matches');
-
+        
         if (respuesta.data && Array.isArray(respuesta.data)) {
-          // Filtramos en el frontend: solo los partidos que ya tienen goles reales en Neon
-          const filtrados = respuesta.data.filter(p =>
-            p.goles_real_local !== null &&
-            p.goles_real_local !== undefined
+          const filtrados = respuesta.data.filter(p => 
+            p.golesL !== null && 
+            p.golesL !== undefined && 
+            p.golesL !== ""
           );
           setTerminados(filtrados);
         }
