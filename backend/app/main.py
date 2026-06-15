@@ -172,7 +172,6 @@ def get_matches(usuario_id: int = 1, dia: int = 15, db: Session = Depends(get_db
 @app.get("/api/matches/finished")
 def get_finished_matches(db: Session = Depends(get_db)):
     try:
-        # Consulta SQL limpia con las columnas reales del disco
         query = text("""
             SELECT p.id, el.grupo, p.fecha_hora, 
                    el.nombre as local, el.bandera_url as banderaL, p.goles_local,
@@ -272,7 +271,7 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 # ==========================================
-# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN DE MARCADORES (CORREGIDO)
+# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN DE MARCADORES
 # ==========================================
 @app.post("/matches/{partido_id}/finish")
 @app.post("/api/matches/{partido_id}/finish")
