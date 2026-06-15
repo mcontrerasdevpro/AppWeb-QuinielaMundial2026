@@ -171,14 +171,12 @@ def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
 def get_finished_matches(db: Session = Depends(get_db)):
     try:
         query = text("""
-            SELECT p.id, el.grupo, p.fecha_hora, 
-                   el.nombre as local, el.bandera_url as banderaL, p.goles_local,
-                   ev.nombre as visitante, ev.bandera_url as banderaV, p.goles_visitante
+            SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as banderaL,
+                   ev.nombre as visitante, ev.bandera_url as banderaV
             FROM partidos p
-            JOIN equipos el ON p.equipo_local_id = el.id
-            JOIN equipos ev ON p.equipo_visitante_id = ev.id
-            WHERE p.estado = 'finalizado'
-            ORDER BY p.fecha_hora DESC
+            JOIN equipos el ON p.equipo_local_id_equipo_id = el.id
+            JOIN equipos ev ON p.equipo_visitante_id_equipo_id = ev.id
+            ORDER BY p.fecha_hora ASC
         """)
         result = db.execute(query).mappings().all()
         
