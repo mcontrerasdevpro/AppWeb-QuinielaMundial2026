@@ -9,9 +9,29 @@ body {
 }
 
 @keyframes pulso-balon {
-  0%, 100% { transform: scale(1) rotate(0deg); box-shadow: 0 0 15px rgba(25, 135, 84, 0.4); }
-  50% { transform: scale(1.06) rotate(8deg); box-shadow: 0 0 25px rgba(25, 135, 84, 0.7); }
+
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    box-shadow: 0 0 15px rgba(25, 135, 84, 0.4);
+  }
+
+  50% {
+    transform: scale(1.06) rotate(8deg);
+    box-shadow: 0 0 25px rgba(25, 135, 84, 0.7);
+  }
 }
+
 .animacion-balon {
   animation: pulso-balon 3s infinite ease-in-out;
+}
+
+body {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)),
+  url('./assets/copaMundial.jpeg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+
+  background-position: left center;
 }
