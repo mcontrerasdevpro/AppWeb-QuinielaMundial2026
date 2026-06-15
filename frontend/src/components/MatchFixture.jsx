@@ -11,30 +11,28 @@ export default function MatchFixture({ usuarioId }) {
     const cargarFixture = async () => {
       try {
         setCargando(true);
-        const uid = usuarioId || 1;
+        // Saneamos el usuario_id para producción
+        const idLimpio = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : 1;
         
-        // Ejecuta la petición apuntando a tu servicio configurado en api.js
-        const respuesta = await api.get(`/matches?usuario_id=${uid}`);
+        const respuesta = await api.get(`/matches?usuario_id=${idLimpio}`);
         
         if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
           setPartidosTotales(respuesta.data);
           
-          // Extrae de forma segura el año-mes-día (YYYY-MM-DD) usando expresiones regulares
+          // Extraer fechas YYYY-MM-DD ordenadas
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
-            if (!p.fecha_hora) return "2026-06-15";
-            const coincidencia = String(p.fecha_hora).match(/^\d{4}-\d{2}-\d{2}/);
-            return coincidencia ? coincidencia[0] : "2026-06-15";
+            if (!p.fecha_hora) return "2026-06-11";
+            return String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
           }))].sort();
           
           setFechasDisponibles(fechasUnicas);
           
-          // Auto-posicionar en el día de hoy
-          const hoyStr = new Date().toISOString().split('T')[0];
-          const idxHoy = fechasUnicas.indexOf(hoyStr);
-          setIndiceFecha(idxHoy !== -1 ? idxHoy : 0);
+          // 🛠️ SOLUCIÓN: Forzamos a que empiece siempre en el DÍA 1 del mundial (índice 0) 
+          // para ver los partidos cargados desde el 11 de junio.
+          setIndiceFecha(0);
         }
       } catch (error) {
-        console.error("❌ Error en fixture frontend:", error);
+        console.error("❌ Error al traer el fixture de Neon:", error);
       } finally {
         setCargando(false);
       }
@@ -52,7 +50,7 @@ export default function MatchFixture({ usuarioId }) {
 
   if (cargando) {
     return (
-      <div className="text-center py-5 font-monospace text-success small">
+      <div className="text-center py-5 font-monospace text-success small bg-white rounded border my-3">
         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
         ⚽ Cargando fixture oficial de Neon...
       </div>
@@ -60,111 +58,126 @@ export default function MatchFixture({ usuarioId }) {
   }
 
   if (fechasDisponibles.length === 0) {
-    return <div className="text-center py-4 text-muted font-monospace small">📅 No hay partidos registrados en Neon.</div>;
+    return (
+      <div className="text-center py-4 text-muted font-monospace small bg-white rounded border my-3">
+        📅 No se encontraron fechas en Neon.
+      </div>
+    );
   }
 
-  // Filtrado de partidos: compara el sub-string YYYY-MM-DD del objeto con el día del calendario
   const fechaActual = fechasDisponibles[indiceFecha];
+  
+  // Filtrado estricto por la fecha del índice actual
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
-    const coincidencia = String(p.fecha_hora).match(/^\d{4}-\d{2}-\d{2}/);
-    return coincidencia ? coincidencia[0] === fechaActual : false;
+    const pFechaLimpia = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
+    return pFechaLimpia === fechaActual;
   });
 
-  // Texto estético para el día superior (Ej: "15 de junio")
-  const opcionesFecha = { day: 'numeric', month: 'long', timeZone: 'UTC' };
-  const fechaFormateadaVisual = new Date(fechaActual + "T00:00:00").toLocaleDateString('es-ES', opcionesFecha);
+  // Convertir fecha YYYY-MM-DD a formato legible (Ej: "11 de junio")
+  let fechaFormateadaVisual = fechaActual;
+  try {
+    const opcionesFecha = { day: 'numeric', month: 'long', timeZone: 'UTC' };
+    fechaFormateadaVisual = new Date(fechaActual + "T00:00:00").toLocaleDateString('es-ES', opcionesFecha);
+  } catch (e) {
+    fechaFormateadaVisual = fechaActual;
+  }
 
   return (
-    <div className="container mt-4" style={{ maxWidth: '600px' }}>
+    <div className="p-3 bg-white text-dark rounded border my-3" style={{ maxWidth: '100%' }}>
       
-      {/* 🔘 CONTROLADORES DE CALENDARIO DEL MUNDIAL */}
-      <div className="d-flex justify-content-between align-items-center mb-4 bg-light p-3 rounded shadow-sm border">
+      {/* 🔘 NAVEGACIÓN DEL CALENDARIO */}
+      <div className="d-flex justify-content-between align-items-center mb-3 bg-light p-2 rounded border">
         <button 
-          className="btn btn-success btn-sm px-3" 
+          className="btn btn-success btn-sm px-2 fw-bold" 
           onClick={irAtras} 
           disabled={indiceFecha === 0}
         >
-          ⬅️ Atrás
+          ⬅️
         </button>
         
         <div className="text-center">
-          <small className="badge bg-success text-uppercase mb-1">Día {indiceFecha + 1} de {fechasDisponibles.length}</small>
-          <h5 className="mb-0 fw-bold text-dark font-monospace">{fechaFormateadaVisual}</h5>
+          <div className="text-muted small font-monospace" style={{ fontSize: '0.75rem' }}>
+            DÍA {indiceFecha + 1} DE {fechasDisponibles.length}
+          </div>
+          <h6 className="mb-0 fw-bold text-success text-capitalize small font-monospace">
+            {fechaFormateadaVisual}
+          </h6>
         </div>
 
         <button 
-          className="btn btn-success btn-sm px-3" 
+          className="btn btn-success btn-sm px-2 fw-bold" 
           onClick={irSiguiente} 
           disabled={indiceFecha === fechasDisponibles.length - 1}
         >
-          Siguiente ➡️
+          ➡️
         </button>
       </div>
 
-      {/* ⚽ DETALLE DE LOS PARTIDOS DEL DÍA */}
-      <div className="row">
-        {partidosDelDia.map((partido) => {
-          // Extrae la hora de forma segura usando un objeto Date nativo de JS
-          let horaStr = "00:00";
-          if (partido.fecha_hora) {
-            try {
-              const objetoFecha = new Date(partido.fecha_hora);
-              if (!isNaN(objetoFecha.getTime())) {
-                horaStr = objetoFecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
-              }
-            } catch (e) {
-              horaStr = "00:00";
+      {/* ⚽ LISTA DE PARTIDOS FILTRADOS */}
+      <div className="row" style={{ maxHeight: '280px', overflowY: 'auto' }}>
+        {partidosDelDia.length === 0 ? (
+          <div className="text-center py-3 text-muted small">No hay partidos agendados para este día.</div>
+        ) : (
+          partidosDelDia.map((partido) => {
+            let horaStr = "00:00";
+            const strCompleto = String(partido.fecha_hora).replace('T', ' ').trim();
+            if (strCompleto.length >= 16) {
+              horaStr = strCompleto.substring(11, 16);
             }
-          }
 
-          return (
-            <div key={partido.id} className="col-12 mb-3">
-              <div className="card shadow-sm border-0 border-start border-success border-4">
-                <div className="card-body py-3">
-                  
-                  <div className="text-center text-muted small mb-2 font-monospace">
-                    Grupo {partido.grupo || 'General'} • 🕒 {horaStr} HS
-                  </div>
-                  
-                  <div className="d-flex justify-content-between align-items-center">
+            return (
+              <div key={partido.id} className="col-12 mb-2">
+                <div className="card shadow-sm border-0 border-start border-success border-3 bg-light">
+                  <div className="card-body p-2">
                     
-                    {/* Equipo Local */}
-                    <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                      <img 
-                        src={partido.banderaL || 'https://placeholder.com'} 
-                        alt={partido.local}
-                        className="rounded border shadow-sm mb-1"
-                        style={{ width: '35px', height: '23px', objectFit: 'cover' }}
-                      />
-                      <div className="fw-bold text-truncate small text-dark">{partido.local}</div>
+                    <div className="text-center text-muted font-monospace mb-1" style={{ fontSize: '0.7rem' }}>
+                      Grupo {partido.grupo || 'U'} • 🕒 {horaStr} HS
                     </div>
+                    
+                    <div className="d-flex justify-content-between align-items-center">
+                      
+                      {/* Local */}
+                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                        <img 
+                          src={partido.banderaL || 'https://placeholder.com'} 
+                          alt={partido.local}
+                          className="rounded border shadow-sm mb-1"
+                          style={{ width: '30px', height: '18px', objectFit: 'cover' }}
+                        />
+                        <div className="fw-bold text-truncate text-dark" style={{ fontSize: '0.75rem' }}>
+                          {partido.local}
+                        </div>
+                      </div>
 
-                    {/* Marcador Registrado */}
-                    <div className="px-2 text-center" style={{ width: '30%' }}>
-                      <span className="badge bg-dark font-monospace fs-6 px-3 py-2">
-                        {partido.golesL} - {partido.golesV}
-                      </span>
-                    </div>
+                      {/* Marcador */}
+                      <div className="px-1 text-center" style={{ width: '30%' }}>
+                        <span className="badge bg-dark font-monospace px-2 py-1" style={{ fontSize: '0.8rem' }}>
+                          {partido.golesL} - {partido.golesV}
+                        </span>
+                      </div>
 
-                    {/* Equipo Visitante */}
-                    <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                      <img 
-                        src={partido.banderaV || 'https://placeholder.com'} 
-                        alt={partido.visitante}
-                        className="rounded border shadow-sm mb-1"
-                        style={{ width: '35px', height: '23px', objectFit: 'cover' }}
-                      />
-                      <div className="fw-bold text-truncate small text-dark">{partido.visitante}</div>
+                      {/* Visitante */}
+                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                        <img 
+                          src={partido.banderaV || 'https://placeholder.com'} 
+                          alt={partido.visitante}
+                          className="rounded border shadow-sm mb-1"
+                          style={{ width: '30px', height: '18px', objectFit: 'cover' }}
+                        />
+                        <div className="fw-bold text-truncate text-dark" style={{ fontSize: '0.75rem' }}>
+                          {partido.visitante}
+                        </div>
+                      </div>
+
                     </div>
 
                   </div>
-
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
     </div>
