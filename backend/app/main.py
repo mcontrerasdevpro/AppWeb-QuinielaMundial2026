@@ -9,14 +9,20 @@ from app.models.tables import Usuario, Partido, Equipo, Pronostico
 from dateutil import parser
 import datetime 
 
-from app.models.tables import Base, engine
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="API Quiniela Mundial 2026",
     description="Backend en Python de alta velocidad listo para operar.",
     version="1.0.0"
 )
+
+from app.database import engine
+from app.models.tables import Base
+
+try:
+    Base.metadata.create_all(bind=engine)
+    print("✨ ¡Tablas estructurales verificadas/creadas con éxito en Neon! 🏛️")
+except Exception as e:
+    print(f"⚠️ Nota en creación de tablas: {e}")
 
 app.add_middleware(
         CORSMiddleware,
