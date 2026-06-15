@@ -5,10 +5,8 @@ export default function MatchFixture({ usuarioId }) {
   const [partidos, setPartidos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
-  // 🧭 CONTROL DE FECHAS: Empezamos en el día 15 de Junio (Mañana arranca el Mundial)
   const [diaCalendario, setDiaCalendario] = useState(15);
 
-  // Formateador dinámico para el texto central de la barra de navegación
   const obtenerTextoDia = (d) => {
     if (d === 15) return "📅 LUNES 15 JUNIO • JORNADA INAUGURAL";
     if (d === 16) return "📅 MARTES 16 JUNIO • JORNADA 1";
@@ -16,13 +14,11 @@ export default function MatchFixture({ usuarioId }) {
     return `📅 JORNADA • ${d} DE JUNIO`;
   };
 
-  // CARGA DINÁMICA: Cada vez que cambia 'diaCalendario', pedimos los partidos correspondientes a Neon
   useEffect(() => {
     const cargarDatos = async () => {
       setCargando(true);
       try {
         const idUsuarioActivo = usuarioId ? usuarioId : 1;
-        // Inyectamos el parámetro ?dia= en la URL de Axios
         const respuesta = await api.get(`/matches?usuario_id=${idUsuarioActivo}&dia=${diaCalendario}`);
         setPartidos(respuesta.data);
       } catch (error) {
@@ -32,7 +28,7 @@ export default function MatchFixture({ usuarioId }) {
       }
     };
     cargarDatos();
-  }, [usuarioId, diaCalendario]); // Se dispara automáticamente al presionar Sig o Atrás
+  }, [usuarioId, diaCalendario]); 
 
   const modificarGoles = (partidoId, equipo, operacion) => {
     setPartidos(partidos.map(partido => {
@@ -100,7 +96,6 @@ export default function MatchFixture({ usuarioId }) {
       {cargando ? (
         <div className="text-center py-4 text-secondary small">⚽ Sincronizando calendario con Neon...</div>
       ) : partidos.length === 0 ? (
-        /* Estado vacío premium si un día no tiene partidos registrados aún */
         <div className="text-center py-5 text-muted bg-secondary bg-opacity-5 rounded border border-secondary border-opacity-20 my-2">
           <span className="fs-3 d-block mb-2">📭</span>
           <p className="small mb-0 font-monospace text-secondary">No hay partidos programados para este día.</p>

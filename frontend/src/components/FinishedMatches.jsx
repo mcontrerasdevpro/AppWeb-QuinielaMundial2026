@@ -15,7 +15,7 @@ export default function FinishedMatches() {
       } catch (error) {
         console.log("Historial vacío detectado.");
       } finally {
-        setCargando(false); // Apagamos el spinner pase lo que pase
+        setCargando(false);
       }
     };
     cargarTerminados();

@@ -20,7 +20,6 @@ export default function Leaderboard({ usuarioLogueadoId }) {
     obtenerRanking();
   }, []);
 
-  // FUNCIÓN PARA GOLPEAR EL ENDPOINT DE BORRADO DE NEON
   const eliminarUsuario = async (id, nombre) => {
     const confirmar = window.confirm(`⚠️ ¿Estás seguro de que deseas eliminar permanentemente a "${nombre.toUpperCase()}" de la Quiniela?`);
     if (!confirmar) return;
@@ -28,7 +27,7 @@ export default function Leaderboard({ usuarioLogueadoId }) {
     try {
       await api.delete(`/usuarios/${id}`);
       alert("🗑️ ¡Usuario borrado de Neon con éxito!");
-      obtenerRanking(); // Recargamos la tabla al instante
+      obtenerRanking();
     } catch (error) {
       alert(`❌ Error al eliminar: ${error.message}`);
     }
