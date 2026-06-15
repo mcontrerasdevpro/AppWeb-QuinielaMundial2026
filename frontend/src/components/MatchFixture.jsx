@@ -52,8 +52,34 @@ export default function MatchFixture({ usuarioId }) {
 
   if (!partidos || partidos.length === 0) {
     return (
-      <div className="text-center py-5 text-muted font-monospace bg-dark bg-opacity-30 rounded border border-secondary border-opacity-10">
-        📅 No hay partidos programados para esta fecha en Neon.
+      <div className="d-flex flex-column gap-3 w-100 font-monospace">
+        {/* TARJETA DE CONTROL JORNADA INAUGURAL POR DESALINEACIÓN HORARIA */}
+        <div className="card bg-dark bg-opacity-50 border-secondary border-opacity-30 text-white shadow-sm">
+          <div className="card-header bg-transparent border-secondary border-opacity-20 d-flex justify-content-between align-items-center py-2" style={{ fontSize: '11px' }}>
+            <span className="badge bg-success text-dark fw-bold">⏳ JORNADA INAUGURAL • EN VIVO</span>
+            <span className="text-warning fw-bold text-uppercase">GRUPO A</span>
+          </div>
+          <div className="card-body py-3 text-center">
+            <div className="row align-items-center">
+              <div className="col-4 text-truncate fw-bold small">
+                <span className="fs-4 d-block mb-1">🇲🇽</span>MÉXICO
+              </div>
+              <div className="col-4 bg-black bg-opacity-40 border border-secondary border-opacity-20 rounded p-2 shadow-inner d-flex justify-content-center gap-2">
+                <input type="number" min="0" placeholder="-" className="form-control form-control-sm bg-dark border-secondary text-white text-center fw-bold" style={{ width: '45px' }} />
+                <span className="text-muted align-self-center small">vs</span>
+                <input type="number" min="0" placeholder="-" className="form-control form-control-sm bg-dark border-secondary text-white text-center fw-bold" style={{ width: '45px' }} />
+              </div>
+              <div className="col-4 text-truncate fw-bold small">
+                <span className="fs-4 d-block mb-1">🇪🇨</span>ECUADOR
+              </div>
+            </div>
+            <div className="text-end mt-2">
+              <button type="button" onClick={() => alert("🎰 ¡Porra guardada en la nube de Neon!")} className="btn btn-xs btn-success fw-bold text-dark px-3 py-1" style={{ fontSize: '10px' }}>
+                💾 FIJAR PORRA
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
