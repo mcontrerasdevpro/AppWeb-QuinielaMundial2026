@@ -12,21 +12,23 @@ export default function MatchFixture({ usuarioId }) {
       try {
         setCargando(true);
         const uid = usuarioId || 1;
+        
+        // Ejecuta la petición apuntando a tu servicio configurado en api.js
         const respuesta = await api.get(`/matches?usuario_id=${uid}`);
         
         if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
           setPartidosTotales(respuesta.data);
           
-          // Mapeo seguro de fechas en formato YYYY-MM-DD sin romper por la letra T
+          // Extrae de forma segura el año-mes-día (YYYY-MM-DD) usando expresiones regulares
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
             if (!p.fecha_hora) return "2026-06-15";
-            const fStr = String(p.fecha_hora);
-            return fStr.includes('T') ? fStr.split('T')[0] : fStr.substring(0, 10);
+            const coincidencia = String(p.fecha_hora).match(/^\d{4}-\d{2}-\d{2}/);
+            return coincidencia ? coincidencia[0] : "2026-06-15";
           }))].sort();
           
           setFechasDisponibles(fechasUnicas);
           
-          // Auto-posicionar el día actual en el calendario
+          // Auto-posicionar en el día de hoy
           const hoyStr = new Date().toISOString().split('T')[0];
           const idxHoy = fechasUnicas.indexOf(hoyStr);
           setIndiceFecha(idxHoy !== -1 ? idxHoy : 0);
@@ -61,16 +63,15 @@ export default function MatchFixture({ usuarioId }) {
     return <div className="text-center py-4 text-muted font-monospace small">📅 No hay partidos registrados en Neon.</div>;
   }
 
-  // Filtrado de partidos del día activo
+  // Filtrado de partidos: compara el sub-string YYYY-MM-DD del objeto con el día del calendario
   const fechaActual = fechasDisponibles[indiceFecha];
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
-    const pFecha = String(p.fecha_hora).includes('T') 
-      ? String(p.fecha_hora).split('T')[0] 
-      : String(p.fecha_hora).substring(0, 10);
-    return pFecha === fechaActual;
+    const coincidencia = String(p.fecha_hora).match(/^\d{4}-\d{2}-\d{2}/);
+    return coincidencia ? coincidencia[0] === fechaActual : false;
   });
 
+  // Texto estético para el día superior (Ej: "15 de junio")
   const opcionesFecha = { day: 'numeric', month: 'long', timeZone: 'UTC' };
   const fechaFormateadaVisual = new Date(fechaActual + "T00:00:00").toLocaleDateString('es-ES', opcionesFecha);
 
@@ -104,11 +105,17 @@ export default function MatchFixture({ usuarioId }) {
       {/* ⚽ DETALLE DE LOS PARTIDOS DEL DÍA */}
       <div className="row">
         {partidosDelDia.map((partido) => {
-          // Obtención segura de hora hh:mm usando el índice [1] del split
+          // Extrae la hora de forma segura usando un objeto Date nativo de JS
           let horaStr = "00:00";
-          if (partido.fecha_hora && String(partido.fecha_hora).includes('T')) {
-            const partes = String(partido.fecha_hora).split('T');
-            if (partes[1]) horaStr = partes[1].substring(0, 5);
+          if (partido.fecha_hora) {
+            try {
+              const objetoFecha = new Date(partido.fecha_hora);
+              if (!isNaN(objetoFecha.getTime())) {
+                horaStr = objetoFecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+              }
+            } catch (e) {
+              horaStr = "00:00";
+            }
           }
 
           return (

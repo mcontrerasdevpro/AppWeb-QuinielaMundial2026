@@ -144,7 +144,6 @@ def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
                 f_raw = row["fecha_hora"]
                 f_obj = parser.parse(f_raw) if isinstance(f_raw, str) else f_raw
                 
-                # Enviamos formato ISO completo para que JS lo divida por la 'T' sin romperse
                 fecha_iso = f_obj.isoformat()
                 partido_id = row["id"]
                 gL, gV = apuestas_map.get(partido_id, (0, 0))
@@ -270,7 +269,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception:
         manager.disconnect(websocket)
 
-# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN (BLINDADO CONTRA VALORES NULL)
+# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN 
 @app.post("/matches/{partido_id}/finish")
 @app.post("/api/matches/{partido_id}/finish")
 def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: int, db: Session = Depends(get_db)):
