@@ -81,12 +81,29 @@ export default function MatchFixture({ usuarioId }) {
     }
   };
 
-  const manejarCambioGol = (partidoId, campo, valor) => {
+ const manejarCambioGol = (partidoId, campo, valor) => {
     setGolesTemporales(prev => ({
       ...prev,
       [`${partidoId}_${campo}`]: valor
     }));
   };
+
+  if (cargando) {
+    return (
+      <div className="text-center py-5 font-monospace text-success small">
+        <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+        ⚽ Sincronizando fixture oficial con Neon...
+      </div>
+    );
+  }
+
+  if (!partidos || partidos.length === 0) {
+    return (
+      <div className="text-center py-5 text-muted font-monospace bg-dark bg-opacity-30 rounded border border-secondary border-opacity-10 small">
+        📅 No hay partidos registrados en Neon para mostrar.
+      </div>
+    );
+  }
 
   return (
     <div className="w-100 font-monospace">
