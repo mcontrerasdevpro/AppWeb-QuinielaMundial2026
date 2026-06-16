@@ -22,7 +22,6 @@ export default function MatchFixture({ usuarioId }) {
         if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
           setPartidosTotales(respuesta.data);
 
-          // Extrae las fechas reales sin errores de formato (AAAA-MM-DD)
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
             if (!p.fecha_hora) return "2026-06-11";
             return String(p.fecha_hora).substring(0, 10);
@@ -30,7 +29,6 @@ export default function MatchFixture({ usuarioId }) {
 
           setFechasDisponibles(fechasUnicas);
 
-          // Posiciona automáticamente la app en la jornada real de hoy (16 de Junio)
           const hoyISO = new Date().toISOString().substring(0, 10);
           const indexHoy = fechasUnicas.indexOf(hoyISO);
           setIndiceFecha(indexHoy !== -1 ? indexHoy : 0);
@@ -54,7 +52,6 @@ export default function MatchFixture({ usuarioId }) {
     };
     cargarFixture();
   }, [usuarioId]);
-
   const irAtras = () => {
     if (indiceFecha > 0) setIndiceFecha(indiceFecha - 1);
   };
@@ -117,7 +114,6 @@ export default function MatchFixture({ usuarioId }) {
       setGuardandoId(null);
     }
   };
-
   if (cargando) {
     return (
       <div className="text-center py-5 font-monospace text-success small bg-dark bg-opacity-50 text-white rounded-4 border border-secondary my-3">
@@ -173,8 +169,6 @@ export default function MatchFixture({ usuarioId }) {
         }
       `}</style>
 
-      {/* SE QUITARON LAS PESTAÑAS DUPLICADAS DE AQUÍ PORQUE YA LAS DIBUJA TU COMPONENTE PADRE */}
-
       {/* Control Navegador de Jornadas */}
       <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-2 rounded-3 border border-secondary shadow-sm" style={{ maxWidth: '500px', margin: '10px auto' }}>
         <button
@@ -202,8 +196,6 @@ export default function MatchFixture({ usuarioId }) {
           Siguiente ➡️
         </button>
       </div>
-
-      {/* Listado de Partidos */}
       <div className="row g-2 px-1 scroll-partidos" style={{ maxHeight: '310px', overflowY: 'auto', overflowX: 'hidden' }}>
         {partidosDelDia.length === 0 ? (
           <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-30">
@@ -227,7 +219,7 @@ export default function MatchFixture({ usuarioId }) {
                 return String(banderaNeon).trim().toLowerCase();
               }
               const n = String(nombre).trim().toLowerCase()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
               if (n === 'mexico') return 'mx';
               if (n === 'ecuador') return 'ec';
@@ -270,8 +262,7 @@ export default function MatchFixture({ usuarioId }) {
 
             const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
             const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
-
-            return (
+ return (
               <div key={partido.id} className="col-12 px-2">
                 <div className="card shadow-sm border-0 border-start border-success border-3 bg-dark bg-opacity-60 text-white rounded-3 border border-secondary border-opacity-20 mb-1">
                   <div className="card-body p-2 font-monospace">
@@ -285,10 +276,10 @@ export default function MatchFixture({ usuarioId }) {
 
                     <div className="d-flex justify-content-between align-items-center px-1">
                       
-                      {/* Local */}
+                      {/* Local (Izquierda) */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com{isoL}.png`}
+                          src={`https://flagcdn.com/w40/${isoL}.png`}
                           alt={partido.local}
                           className="rounded border border-secondary border-opacity-40 shadow-sm mb-1"
                           style={{ width: '26px', height: '17px', objectFit: 'cover' }}
@@ -298,7 +289,7 @@ export default function MatchFixture({ usuarioId }) {
                         </div>
                       </div>
 
-                      {/* Inputs / Marcador real */}
+                      {/* Inputs / Marcador real (Centro) */}
                       <div className="d-flex flex-column align-items-center justify-content-center" style={{ width: '30%' }}>
                         <div className="d-flex align-items-center justify-content-center">
                           {vistaActiva === "resultados" ? (
@@ -331,52 +322,7 @@ export default function MatchFixture({ usuarioId }) {
                         </div>
                       </div>
 
-                      {/* Visitante */}
-                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
-                        <img
-                          src={`https://flagcdn.com/w40/${isoV}.png`}
-                          alt={partido.visitante}
-                          className="rounded border border-secondary border-opacity-40 shadow-sm mb-1"  style={{ width: '26px', height: '17px', objectFit: 'cover' }}
-                        />
-                        <div className="fw-bold text-truncate text-light text-uppercase" style={{ fontSize: '0.72rem' }}>
-                          {partido.local}
-                        </div>
-                      </div>
-
-                      {/* Inputs / Marcador real */}
-                      <div className="d-flex flex-column align-items-center justify-content-center" style={{ width: '30%' }}>
-                        <div className="d-flex align-items-center justify-content-center">
-                          {vistaActiva === "resultados" ? (
-                            <div className="d-flex align-items-center bg-black bg-opacity-50 px-2 py-0.5 rounded border border-secondary border-opacity-40 gap-2 fw-bold text-warning" style={{ fontSize: '1rem' }}>
-                              <span>{partido.goles_real_local ?? 0}</span>
-                              <span className="text-muted" style={{ fontSize: '0.7rem' }}>-</span>
-                              <span>{partido.goles_real_visitante ?? 0}</span>
-                            </div>
-                          ) : (
-                            <>
-                              <input
-                                type="number"
-                                disabled={partidoBloqueado}
-                                className="form-control form-control-sm text-center bg-dark text-success fw-bold p-0 border border-secondary"
-                                style={{ width: '34px', fontSize: '0.95rem', height: '30px' }}
-                                value={valLocal}
-                                onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
-                              />
-                              <span className="mx-1 text-secondary fw-bold small">-</span>
-                              <input
-                                type="number"
-                                disabled={partidoBloqueado}
-                                className="form-control form-control-sm text-center bg-dark text-success fw-bold p-0 border border-secondary"
-                                style={{ width: '34px', fontSize: '0.95rem', height: '30px' }}
-                                value={valVisitante}
-                                onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
-                              />
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Componente Visitante */}
+                      {/* Visitante (Derecha) */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
                           src={`https://flagcdn.com/w40/${isoV}.png`}
