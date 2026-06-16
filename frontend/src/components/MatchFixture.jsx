@@ -22,13 +22,18 @@ export default function MatchFixture({ usuarioId }) {
         if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
           setPartidosTotales(respuesta.data);
 
+          // Obtiene las fechas reales del calendario de Neon (A partir del 15 de Junio)
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
             if (!p.fecha_hora) return "2026-06-15";
             return String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
           }))].sort();
 
           setFechasDisponibles(fechasUnicas);
-          setIndiceFecha(0);
+          
+          // CORRECCIÓN CLAVE: Posiciona automáticamente la app en la jornada real activa
+          const hoyISO = new Date().toISOString().substring(0, 10);
+          const indexHoy = fechasUnicas.indexOf(hoyISO);
+          setIndiceFecha(indexHoy !== -1 ? indexHoy : 0);
 
           const estadoInicialGoles = {};
           respuesta.data.forEach(p => {
@@ -158,16 +163,16 @@ export default function MatchFixture({ usuarioId }) {
         }
       `}</style>
 
-      {/* Selector de vistas superiores (Activos / Resultados) */}
+      {/* Selector Único de Vistas (Se eliminó el bloque amarillo duplicado) */}
       <div className="d-flex justify-content-center mb-3 bg-dark p-1 rounded-3 border border-secondary">
         <button 
-          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "activos" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
+          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "activos" ? "btn-success text-white" : "btn-dark text-secondary"}`}
           onClick={() => setVistaActiva("activos")}
         >
           ⌛ ACTIVOS
         </button>
         <button 
-          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "resultados" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
+          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "resultados" ? "btn-success text-white" : "btn-dark text-secondary"}`}
           onClick={() => setVistaActiva("resultados")}
         >
           🏁 RESULTADOS
