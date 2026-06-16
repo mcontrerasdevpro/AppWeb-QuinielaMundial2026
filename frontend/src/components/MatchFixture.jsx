@@ -149,7 +149,7 @@ export default function MatchFixture({ usuarioId }) {
     fechaFormateadaVisual = fechaActual;
   }
 
-  return (
+   return (
     <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
 
       <style>{`
@@ -161,49 +161,58 @@ export default function MatchFixture({ usuarioId }) {
         input[type=number] {
           -moz-appearance: textfield;
         }
+        .scroll-partidos::-webkit-scrollbar {
+          width: 6px;
+        }
+        .scroll-partidos::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.2);
+          border-radius: 10px;
+        }
+        .scroll-partidos::-webkit-scrollbar-thumb {
+          background: rgba(40, 167, 69, 0.4);
+          border-radius: 10px;
+        }
       `}</style>
 
-      {/* Selector Único de Vistas (Se eliminó el bloque amarillo duplicado) */}
+      {/* UN SOLO SELECTOR DE VISTAS LIMPIO (CORREGIDO EL DUPLICADO) */}
       <div className="d-flex justify-content-center mb-3 bg-dark p-1 rounded-3 border border-secondary">
         <button 
-          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "activos" ? "btn-success text-white" : "btn-dark text-secondary"}`}
+          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "activos" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
           onClick={() => setVistaActiva("activos")}
         >
           ⌛ ACTIVOS
         </button>
         <button 
-          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "resultados" ? "btn-success text-white" : "btn-dark text-secondary"}`}
+          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "resultados" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
           onClick={() => setVistaActiva("resultados")}
         >
           🏁 RESULTADOS
         </button>
       </div>
 
-      {/* Navegación por jornadas */}
-      <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
+      {/* Control Navegador de Jornadas */}
+      <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-2 rounded-3 border border-secondary shadow-sm" style={{ maxWidth: '500px', margin: '10px auto' }}>
         <button
-          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
+          className="btn btn-sm btn-outline-success px-2 py-1 fw-bold text-white"
           onClick={irAtras}
           disabled={indiceFecha === 0}
-          style={{ minWidth: '95px' }}
         >
           ⬅️ Atrás
         </button>
 
         <div className="text-center">
-          <div className="text-secondary small tracking-wider mb-1" style={{ fontSize: '0.75rem' }}>
+          <div className="text-secondary tracking-wider mb-0" style={{ fontSize: '0.65rem' }}>
             JORNADA {indiceFecha + 1} / {fechasDisponibles.length}
           </div>
-          <h5 className="mb-0 fw-black text-success text-capitalize tracking-wide font-monospace text-shadow-sm">
+          <h6 className="mb-0 fw-bold text-success text-capitalize tracking-wide font-monospace">
             {fechaFormateadaVisual}
-          </h5>
+          </h6>
         </div>
 
         <button
-          className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
+          className="btn btn-sm btn-outline-success px-2 py-1 fw-bold text-white"
           onClick={irSiguiente}
           disabled={indiceFecha === fechasDisponibles.length - 1}
-          style={{ minWidth: '95px' }}
         >
           Siguiente ➡️
         </button>
