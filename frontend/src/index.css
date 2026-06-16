@@ -13,6 +13,7 @@ body {
   min-height: 100vh;
 }
 
+/* Animación optimizada del balón */
 @keyframes pulso-balon {
   0%, 100% {
     transform: scale(1) rotate(0deg);
@@ -23,11 +24,11 @@ body {
     box-shadow: 0 0 25px rgba(25, 135, 84, 0.7);
   }
 }
-
 .animacion-balon {
   animation: pulso-balon 3s infinite ease-in-out;
 }
 
+/* Animación optimizada de texto */
 @keyframes parpadeo-texto {
   0%, 100% { 
     opacity: 1; 
@@ -38,44 +39,61 @@ body {
     text-shadow: none; 
   }
 }
-
 .texto-parpadeante {
   animation: parpadeo-texto 2s infinite ease-in-out !important;
   color: #28a745 !important;
-  font-weight: bold;
   letter-spacing: 1px;
 }
 
+/* Efectos hover responsivos */
 .card {
   transition: transform 0.2s ease, box-shadow 0.2s ease !important;
 }
 .card:hover {
   transform: translateY(-3px) !important;
 }
-.border-success:hover {
+.border-success:hover, .border-warning:hover {
   box-shadow: 0 0 20px rgba(25, 135, 84, 0.5) !important;
 }
-.border-warning:hover {
-  box-shadow: 0 0 20px rgba(255, 193, 7, 0.5) !important;
+
+/* Caja contenedora translúcida */
+.contenedor-principal-juego {
+  background-color: rgba(33, 37, 41, 0.45) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
 }
 
-@media (min-width: 768px) {
-  .w-100.font-monospace {
-    max-width: 440px !important; 
-    margin: 0 auto !important;  
-    padding-top: 20px;
-  }
+/* ALTURA INTERNA MÁXIMA: Ajustado a 88vh para ganar más recorrido vertical */
+.zona-scroll-contenido {
+  max-height: 88vh !important;
+  overflow-y: auto !important; 
+  padding-right: 6px;
+}
 
-  .row.g-2.px-1 {
-    display: flex !important;
-    flex-direction: column !important;
-    max-height: 48vh !important; 
-    overflow-y: auto !important;
-  }
+/* Scrollbar personalizado mínimo */
+.zona-scroll-contenido::-webkit-scrollbar {
+  width: 6px;
+}
+.zona-scroll-contenido::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+.zona-scroll-contenido::-webkit-scrollbar-thumb {
+  background: rgba(40, 167, 69, 0.4);
+  border-radius: 10px;
+}
+.zona-scroll-contenido::-webkit-scrollbar-thumb:hover {
+  background: rgba(40, 167, 69, 0.7);
+}
 
-  .border.border-secondary.bg-dark.bg-opacity-50 {
-    min-height: 240px !important;
-    padding-top: 25px !important;
-    padding-bottom: 25px !important;
-  }
+/* Inputs de la Quiniela */
+.input-marcador {
+  background-color: #0b0f0d !important;
+  color: #ffffff !important;
+  border: 1px solid #198754 !important;
+  font-family: monospace;
+}
+.input-marcador:focus {
+  border-color: #28a745 !important;
+  box-shadow: 0 0 8px rgba(40, 167, 69, 0.5) !important;
 }
