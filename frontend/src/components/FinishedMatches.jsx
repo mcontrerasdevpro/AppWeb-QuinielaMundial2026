@@ -8,7 +8,9 @@ export default function FinishedMatches() {
   useEffect(() => {
     const cargarTerminados = async () => {
       try {
-        const respuesta = await api.get('/matches?usuario_id=1');
+
+        {/* CORREGIDO: Cambiada la ruta /matches por /matches/finished */ }
+        const respuesta = await api.get('/matches/finished');
 
         const datosPartidos = respuesta?.data?.data || respuesta?.data || [];
 
