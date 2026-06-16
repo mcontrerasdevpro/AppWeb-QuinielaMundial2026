@@ -8,9 +8,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from dateutil import parser
-
 from app.database import get_db, engine
 from app.models.tables import Usuario, Partido, Equipo, Pronostico, Base
+import httpx
 
 app = FastAPI(
     title="API Quiniela Mundial 2026",
@@ -467,3 +467,79 @@ def delete_user(usuario_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al borrar: {str(e)}")
+
+# ==========================================
+# ENDPOINT DE AUTOMATIZACIÓN (VERSIÓN CORREGIDA DE SEGURIDAD)
+# ==========================================
+@app.post("/api/matches/sync-auto")
+async def sincronizar_partidos_automatizado(db: Session = Depends(get_db)):
+    # 1. Leemos la variable dinámicamente dentro de la función para asegurar su carga en Render
+    api_key_football = os.getenv("FOOTBALL_API_KEY")
+    
+    if not api_key_football:
+        raise HTTPException(
+            status_code=500, 
+            detail="Falta configurar la variable FOOTBALL_API_KEY en el entorno."
+        )
+    
+    url = "https://v3.football.api-sports.io/fixtures?league=1&season=2026"  
+    
+    headers = {
+        "x-apisports-key": api_key_football
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            respuesta = await client.get(url, headers=headers, timeout=15.0)
+            
+        if respuesta.status_code != 200:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Error de conexión con API-Sports. Código HTTP: {respuesta.status_code}"
+            )
+            
+        datos_externos = respuesta.json().get("response", [])
+        partidos_actualizados = 0
+
+        for f in datos_externos:
+            status_partido = f["fixture"]["status"]["short"]
+            
+            if status_partido == "FT":
+                goles_local_real = f["goals"]["home"]
+                goles_visitante_real = f["goals"]["away"]                
+                nombre_local_ext = f["teams"]["home"]["name"]
+                nombre_visitante_ext = f["teams"]["away"]["name"]
+
+                query_partido = text("""
+                    SELECT p.id FROM partidos p
+                    JOIN equipos el ON p.equipo_local_id = el.id
+                    JOIN equipos ev ON p.equipo_visitante_id = ev.id
+                    WHERE (el.nombre ILIKE :local OR :local ILIKE CONCAT('%', el.nombre, '%'))
+                      AND (ev.nombre ILIKE :visitante OR :visitante ILIKE CONCAT('%', ev.nombre, '%'))
+                      AND p.estado = 'programado'
+                    LIMIT 1
+                """)
+                partido_db = db.execute(
+                    query_partido, 
+                    {"local": nombre_local_ext, "visitante": nombre_visitante_ext}
+                ).mappings().first()
+
+                if partido_db:
+                    partido_id = partido_db["id"]
+                    
+                    finish_match(
+                        partido_id=partido_id, 
+                        goles_local_real=goles_local_real, 
+                        goles_visitante_real=goles_visitante_real, 
+                        db=db
+                    )
+                    partidos_actualizados += 1
+
+        return {
+            "status": "success", 
+            "mensaje": f"⚽ Sincronización exitosa. Se detectaron y cerraron {partidos_actualizados} partidos nuevos en Neon."
+        }
+
+    except Exception as e:
+        print(f"❌ Fallo en el script de sincronización automática: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
