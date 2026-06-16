@@ -9,7 +9,6 @@ export default function FinishedMatches() {
     const cargarTerminados = async () => {
       try {
 
-        {/* CORREGIDO: Cambiada la ruta /matches por /matches/finished */ }
         const respuesta = await api.get('/matches/finished');
 
         const datosPartidos = respuesta?.data?.data || respuesta?.data || [];
@@ -70,7 +69,6 @@ export default function FinishedMatches() {
 
   if (terminados.length === 0) {
     return (
-      /* CORRECCIÓN DE ALTURA: Añadido py-5 y márgenes para empujar la estructura vertical al mismo tamaño que la Landing */
       <div className="text-center py-5 text-muted font-monospace my-3 bg-dark bg-opacity-30 rounded-3 border border-secondary border-opacity-30 p-4 shadow-lg">
         <div className="fs-3 mb-2">🏁</div>
         <p className="small mb-0 text-secondary text-uppercase tracking-wider" style={{ fontSize: '12px', lineHeight: '1.5' }}>
@@ -81,15 +79,12 @@ export default function FinishedMatches() {
   }
 
   return (
-    /* CONTENEDOR CON SCROLL HORIZONTAL: Cambiado a flex-row, overflow-x-auto y minHeight fijo */
     <div 
-      className="d-flex flex-row gap-3 w-100 font-monospace py-2" 
+      className="d-flex flex-column gap-3 w-100 font-monospace py-2 pe-1" 
       style={{ 
-        minHeight: '140px',          /* Altura fija compacta para que no estire el Dashboard */
-        overflowX: 'auto',           /* Activa el scroll lateral */
-        whiteSpace: 'nowrap',        /* Evita que las tarjetas salten de línea */
-        scrollSnapType: 'x mandatory', /* Desplazamiento imantado premium */
-        WebkitOverflowScrolling: 'touch' /* Suavidad en dispositivos móviles */
+        maxHeight: '340px',       
+        overflowY: 'auto',        
+        overflowX: 'hidden'       
       }}
     >
       {terminados.map((partido) => {
@@ -97,22 +92,13 @@ export default function FinishedMatches() {
         const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
 
         return (
-          /* TARJETA HORIZONTAL: Ancho fijo (minWidth) para alinearse una al lado de la otra */
-          <div 
-            key={partido.id} 
-            className="card shadow-lg border-0 border-start border-warning border-4 bg-dark bg-opacity-40 text-white rounded-3 border border-secondary border-opacity-20 p-3"
-            style={{ 
-              minWidth: '290px',      /* Tamaño de lectura óptimo por tarjeta */
-              scrollSnapAlign: 'start', /* Alineación magnética al deslizar */
-              flexShrink: 0           /* Evita que Flexbox aplaste la tarjeta */
-            }}
-          >
-            <div className="row align-items-center justify-content-between g-0 w-100">
+          <div key={partido.id} className="card shadow-lg border-0 border-start border-warning border-4 bg-dark bg-opacity-40 text-white rounded-3 border border-secondary border-opacity-20 p-3 transition-all">
+            <div className="row align-items-center justify-content-between g-0">
 
               {/* Local */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
-                  src={`https://flagcdn.com/w40/${isoL}.png`}
+                  src={`https://flagcdn.com{isoL}.png`}
                   alt={partido.local}
                   className="rounded border border-secondary border-opacity-40 shadow mb-2"
                   style={{ width: '38px', height: '24px', objectFit: 'cover' }}
@@ -122,8 +108,8 @@ export default function FinishedMatches() {
                 </div>
               </div>
 
-              {/* Marcador Real Estilizado (Ajustado a col-4 para simetría horizontal) */}
-              <div className="col-4 text-center d-flex justify-content-center align-items-center">
+              {/* Marcador Real Estilizado */}
+              <div className="col-3 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-60 border border-secondary border-opacity-40 rounded px-3 py-2 fw-bold text-warning" style={{ fontSize: '1.25rem', minWidth: '85px', letterSpacing: '1px' }}>
                   <span>{partido.goles_real_local ?? 0}</span>
                   <span className="text-muted mx-1.5 opacity-50">-</span>
@@ -134,7 +120,7 @@ export default function FinishedMatches() {
               {/* Visitante */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
-                  src={`https://flagcdn.com/w40/${isoV}.png`}
+                  src={`https://flagcdn.com{isoV}.png`}
                   alt={partido.visitante}
                   className="rounded border border-secondary border-opacity-40 shadow mb-2"
                   style={{ width: '38px', height: '24px', objectFit: 'cover' }}
