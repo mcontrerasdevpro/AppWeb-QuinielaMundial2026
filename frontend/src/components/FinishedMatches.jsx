@@ -36,6 +36,8 @@ export default function FinishedMatches() {
     }
     const n = String(nombre).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (n === 'mexico') return 'mx';
+    if (n === 'espana') return 'es';
+    if (n === 'irlanda') return 'ie';
     if (n === 'sudafrica') return 'za';
     if (n === 'corea del sur') return 'kr';
     if (n === 'republica checa') return 'cz';
@@ -78,62 +80,86 @@ export default function FinishedMatches() {
     );
   }
 
+   const partidosPorFecha = terminados.reduce((grupos, partido) => {
+    const dia = partido.fecha ? partido.fecha.split(" - ")[0] : "JORNADA ANTERIOR";
+    if (!grupos[dia]) {
+      grupos[dia] = [];
+    }
+    grupos[dia].push(partido);
+    return grupos;
+  }, {});
+
   return (
-    <div 
-      className="d-flex flex-column gap-3 w-100 font-monospace py-2 pe-1" 
-      style={{ 
-        maxHeight: '340px',       
-        overflowY: 'auto',        
-        overflowX: 'hidden'       
+    <div
+      className="d-flex flex-column gap-3 w-100 font-monospace py-2 pe-1"
+      style={{
+        maxHeight: '340px',
+        overflowY: 'auto',
+        overflowX: 'hidden'
       }}
     >
-      {terminados.map((partido) => {
-        const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
-        const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
-
-        return (
-          <div key={partido.id} className="card shadow-lg border-0 border-start border-warning border-4 bg-dark bg-opacity-40 text-white rounded-3 border border-secondary border-opacity-20 p-3 transition-all">
-            <div className="row align-items-center justify-content-between g-0">
-
-              {/* Local */}
-              <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
-                <img
-                  src={`https://flagcdn.com/w40/${isoL}.png`}
-                  alt={partido.local}
-                  className="rounded border border-secondary border-opacity-40 shadow mb-2"
-                  style={{ width: '38px', height: '24px', objectFit: 'cover' }}
-                />
-                <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>
-                  {partido.local}
-                </div>
-              </div>
-
-              {/* Marcador Real Estilizado */}
-              <div className="col-3 text-center d-flex justify-content-center align-items-center">
-                <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-60 border border-secondary border-opacity-40 rounded px-3 py-2 fw-bold text-warning" style={{ fontSize: '1.25rem', minWidth: '85px', letterSpacing: '1px' }}>
-                  <span>{partido.goles_real_local ?? 0}</span>
-                  <span className="text-muted mx-1.5 opacity-50">-</span>
-                  <span>{partido.goles_real_visitante ?? 0}</span>
-                </div>
-              </div>
-
-              {/* Visitante */}
-              <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
-                <img
-                  src={`https://flagcdn.com/w40/${isoV}.png`}
-                  alt={partido.visitante}
-                  className="rounded border border-secondary border-opacity-40 shadow mb-2"
-                  style={{ width: '38px', height: '24px', objectFit: 'cover' }}
-                />
-                <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>
-                  {partido.visitante}
-                </div>
-              </div>
-
-            </div>
+      {/* CORREGIDO: Mapeamos los días agrupados para inyectar los separadores visuales */}
+      {Object.entries(partidosPorFecha).map(([fechaGrupo, partidos]) => (
+        <div key={fechaGrupo} className="w-100 d-flex flex-column gap-2">
+          
+          {/* SEPARADOR DE FECHA PREMIUM */}
+          <div className="d-flex align-items-center my-1 opacity-75">
+            <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-2 py-1" style={{ fontSize: '10px', letterSpacing: '1px' }}>
+              📅 {fechaGrupo}
+            </span>
+            <div className="flex-grow-1 ms-2 border-bottom border-secondary border-opacity-25" style={{ height: '1px' }}></div>
           </div>
-        );
-      })}
+
+          {/* LISTADO DE PARTIDOS DE ESTE DÍA ESPECÍFICO */}
+          {partidos.map((partido) => {
+            const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
+            const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
+
+            return (
+              <div key={partido.id} className="card shadow-lg border-0 border-start border-warning border-4 bg-dark bg-opacity-40 text-white rounded-3 border border-secondary border-opacity-20 p-3 transition-all">
+                <div className="row align-items-center justify-content-between g-0">
+
+                  {/* Local */}
+                  <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
+                    <img
+                      src={`https://flagcdn.com/w40/${isoL}.png`}
+                      alt={partido.local}
+                      className="rounded border border-secondary border-opacity-40 shadow mb-2"
+                      style={{ width: '38px', height: '24px', objectFit: 'cover' }}
+                    />
+                    <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>
+                      {partido.local}
+                    </div>
+                  </div>
+
+                  {/* Marcador Real Estilizado */}
+                  <div className="col-3 text-center d-flex justify-content-center align-items-center">
+                    <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-60 border border-secondary border-opacity-40 rounded px-3 py-2 fw-bold text-warning" style={{ fontSize: '1.25rem', minWidth: '85px', letterSpacing: '1px' }}>
+                      <span>{partido.goles_real_local ?? 0}</span>
+                      <span className="text-muted mx-1.5 opacity-50">-</span>
+                      <span>{partido.goles_real_visitante ?? 0}</span>
+                    </div>
+                  </div>
+
+                  {/* Visitante */}
+                  <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
+                    <img
+                      src={`https://flagcdn.com/w40/${isoV}.png`}
+                      alt={partido.visitante}
+                      className="rounded border border-secondary border-opacity-40 shadow mb-2"
+                      style={{ width: '38px', height: '24px', objectFit: 'cover' }}
+                    />
+                    <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>
+                      {partido.visitante}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
-}    
+}
