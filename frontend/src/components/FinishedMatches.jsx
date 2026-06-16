@@ -98,7 +98,7 @@ export default function FinishedMatches() {
               {/* Local */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
-                  src={`https://flagcdn.com{isoL}.png`}
+                  src={`https://flagcdn.com/w40/${isoL}.png`}
                   alt={partido.local}
                   className="rounded border border-secondary border-opacity-40 shadow mb-2"
                   style={{ width: '38px', height: '24px', objectFit: 'cover' }}
@@ -120,7 +120,7 @@ export default function FinishedMatches() {
               {/* Visitante */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
-                  src={`https://flagcdn.com{isoV}.png`}
+                  src={`https://flagcdn.com/w40/${isoV}.png`}
                   alt={partido.visitante}
                   className="rounded border border-secondary border-opacity-40 shadow mb-2"
                   style={{ width: '38px', height: '24px', objectFit: 'cover' }}
@@ -136,4 +136,4 @@ export default function FinishedMatches() {
       })}
     </div>
   );
-}
+}    
