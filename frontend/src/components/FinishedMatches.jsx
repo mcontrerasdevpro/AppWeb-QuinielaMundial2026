@@ -9,12 +9,13 @@ export default function FinishedMatches() {
     const cargarTerminados = async () => {
       try {
         const respuesta = await api.get('/matches?usuario_id=1');
-        
-        if (respuesta.data && Array.isArray(respuesta.data)) {
-          const filtrados = respuesta.data.filter(p => {
-            return p.goles_real_local !== null && 
-                   p.goles_real_local !== undefined && 
-                   p.goles_real_local !== "";
+
+        const datosPartidos = respuesta?.data?.data || respuesta?.data || [];
+
+        if (Array.isArray(datosPartidos)) {
+          const filtrados = datosPartidos.filter(p => {
+            return p.estado === 'terminado' ||
+              (p.goles_real_local !== null && p.goles_real_local !== undefined && p.goles_real_local !== "");
           });
 
           setTerminados(filtrados);
@@ -58,7 +59,7 @@ export default function FinishedMatches() {
 
   if (cargando) {
     return (
-      <div className="text-center py-4 font-monospace text-success small">
+      <div className="text-center py-5 font-monospace text-success small">
         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
         ⚽ Sincronizando marcadores con Neon...
       </div>
@@ -67,42 +68,46 @@ export default function FinishedMatches() {
 
   if (terminados.length === 0) {
     return (
-      <div className="text-center py-4 text-muted font-monospace my-2 bg-dark bg-opacity-50 rounded-3 border border-secondary">      
-        <p className="small mb-0 text-secondary text-uppercase" style={{ fontSize: '11px' }}>
-          🏁 No hay partidos registrados de jornadas anteriores.
+      /* CORRECCIÓN DE ALTURA: Añadido py-5 y márgenes para empujar la estructura vertical al mismo tamaño que la Landing */
+      <div className="text-center py-5 text-muted font-monospace my-3 bg-dark bg-opacity-30 rounded-3 border border-secondary border-opacity-30 p-4 shadow-lg">
+        <div className="fs-3 mb-2">🏁</div>
+        <p className="small mb-0 text-secondary text-uppercase tracking-wider" style={{ fontSize: '12px', lineHeight: '1.5' }}>
+          No hay partidos registrados de jornadas anteriores o falta cargar resultados en la Base de Datos.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="d-flex flex-column gap-2 w-100 font-monospace" style={{ maxHeight: '330px', overflowY: 'auto' }}>
+    /* ALTURA AJUSTADA RESPONSIVA: Subido de 330px a min-vh-50 con gap-3 para que las tarjetas respiren */
+    <div className="d-flex flex-column gap-3 w-100 font-monospace py-2" style={{ minHeight: '400px' }}>
       {terminados.map((partido) => {
         const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
         const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
 
         return (
-          <div key={partido.id} className="card shadow border-0 border-start border-warning border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary p-2">
+          /* DISEÑO PREMIUM ACORDE AL DASHBOARD: Mayor padding vertical (p-3) y efecto de sombra */
+          <div key={partido.id} className="card shadow-lg border-0 border-start border-warning border-4 bg-dark bg-opacity-40 text-white rounded-3 border border-secondary border-opacity-20 p-3 transition-all">
             <div className="row align-items-center justify-content-between g-0">
-              
+
               {/* Local */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
                 <img
                   src={`https://flagcdn.com/w40/${isoL}.png`}
                   alt={partido.local}
-                  className="rounded border border-secondary shadow-sm mb-1"
-                  style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                  className="rounded border border-secondary border-opacity-40 shadow mb-2"
+                  style={{ width: '38px', height: '24px', objectFit: 'cover' }}
                 />
-                <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.8rem' }}>
+                <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>
                   {partido.local}
                 </div>
               </div>
 
-              {/* Marcador Real (Usa fallback seguro en caso de que falte la columna nueva en el backend) */}
+              {/* Marcador Real Estilizado */}
               <div className="col-3 text-center d-flex justify-content-center align-items-center">
-                <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-50 border border-secondary rounded px-3 py-1 fw-bold text-warning h-100" style={{ fontSize: '1.1rem', minWidth: '70px' }}>
+                <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-60 border border-secondary border-opacity-40 rounded px-3 py-2 fw-bold text-warning" style={{ fontSize: '1.25rem', minWidth: '85px', letterSpacing: '1px' }}>
                   <span>{partido.goles_real_local ?? 0}</span>
-                  <span className="text-muted mx-1">-</span>
+                  <span className="text-muted mx-1.5 opacity-50">-</span>
                   <span>{partido.goles_real_visitante ?? 0}</span>
                 </div>
               </div>
@@ -112,10 +117,10 @@ export default function FinishedMatches() {
                 <img
                   src={`https://flagcdn.com/w40/${isoV}.png`}
                   alt={partido.visitante}
-                  className="rounded border border-secondary shadow-sm mb-1"
-                  style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                  className="rounded border border-secondary border-opacity-40 shadow mb-2"
+                  style={{ width: '38px', height: '24px', objectFit: 'cover' }}
                 />
-                <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.8rem' }}>
+                <div className="fw-bold text-truncate text-light w-100" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>
                   {partido.visitante}
                 </div>
               </div>
