@@ -81,16 +81,33 @@ export default function FinishedMatches() {
   }
 
   return (
-    /* ALTURA AJUSTADA RESPONSIVA: Subido de 330px a min-vh-50 con gap-3 para que las tarjetas respiren */
-    <div className="d-flex flex-column gap-3 w-100 font-monospace py-2" style={{ minHeight: '400px' }}>
+    /* CONTENEDOR CON SCROLL HORIZONTAL: Cambiado a flex-row, overflow-x-auto y minHeight fijo */
+    <div 
+      className="d-flex flex-row gap-3 w-100 font-monospace py-2" 
+      style={{ 
+        minHeight: '140px',          /* Altura fija compacta para que no estire el Dashboard */
+        overflowX: 'auto',           /* Activa el scroll lateral */
+        whiteSpace: 'nowrap',        /* Evita que las tarjetas salten de línea */
+        scrollSnapType: 'x mandatory', /* Desplazamiento imantado premium */
+        WebkitOverflowScrolling: 'touch' /* Suavidad en dispositivos móviles */
+      }}
+    >
       {terminados.map((partido) => {
         const isoL = obtenerCodigoSeguro(partido.local, partido.banderaL);
         const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
 
         return (
-          /* DISEÑO PREMIUM ACORDE AL DASHBOARD: Mayor padding vertical (p-3) y efecto de sombra */
-          <div key={partido.id} className="card shadow-lg border-0 border-start border-warning border-4 bg-dark bg-opacity-40 text-white rounded-3 border border-secondary border-opacity-20 p-3 transition-all">
-            <div className="row align-items-center justify-content-between g-0">
+          /* TARJETA HORIZONTAL: Ancho fijo (minWidth) para alinearse una al lado de la otra */
+          <div 
+            key={partido.id} 
+            className="card shadow-lg border-0 border-start border-warning border-4 bg-dark bg-opacity-40 text-white rounded-3 border border-secondary border-opacity-20 p-3"
+            style={{ 
+              minWidth: '290px',      /* Tamaño de lectura óptimo por tarjeta */
+              scrollSnapAlign: 'start', /* Alineación magnética al deslizar */
+              flexShrink: 0           /* Evita que Flexbox aplaste la tarjeta */
+            }}
+          >
+            <div className="row align-items-center justify-content-between g-0 w-100">
 
               {/* Local */}
               <div className="col-4 text-center d-flex flex-column align-items-center justify-content-center">
@@ -105,8 +122,8 @@ export default function FinishedMatches() {
                 </div>
               </div>
 
-              {/* Marcador Real Estilizado */}
-              <div className="col-3 text-center d-flex justify-content-center align-items-center">
+              {/* Marcador Real Estilizado (Ajustado a col-4 para simetría horizontal) */}
+              <div className="col-4 text-center d-flex justify-content-center align-items-center">
                 <div className="d-flex align-items-center justify-content-center bg-black bg-opacity-60 border border-secondary border-opacity-40 rounded px-3 py-2 fw-bold text-warning" style={{ fontSize: '1.25rem', minWidth: '85px', letterSpacing: '1px' }}>
                   <span>{partido.goles_real_local ?? 0}</span>
                   <span className="text-muted mx-1.5 opacity-50">-</span>
