@@ -22,15 +22,15 @@ export default function MatchFixture({ usuarioId }) {
         if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
           setPartidosTotales(respuesta.data);
 
-          // Obtiene las fechas reales del calendario de Neon (A partir del 15 de Junio)
+          // Extrae las fechas reales sin errores de formato (AAAA-MM-DD)
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
-            if (!p.fecha_hora) return "2026-06-15";
-            return String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
+            if (!p.fecha_hora) return "2026-06-11";
+            return String(p.fecha_hora).substring(0, 10);
           }))].sort();
 
           setFechasDisponibles(fechasUnicas);
-          
-          // CORRECCIÓN CLAVE: Posiciona automáticamente la app en la jornada real activa
+
+          // Posiciona automáticamente la app en la jornada real de hoy (16 de Junio)
           const hoyISO = new Date().toISOString().substring(0, 10);
           const indexHoy = fechasUnicas.indexOf(hoyISO);
           setIndiceFecha(indexHoy !== -1 ? indexHoy : 0);
@@ -42,12 +42,12 @@ export default function MatchFixture({ usuarioId }) {
           });
           setGolesTemporales(estadoInicialGoles);
         } else {
-          setFechasDisponibles(["2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18"]);
+          setFechasDisponibles(["2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14"]);
           setIndiceFecha(0);
         }
       } catch (error) {
         console.error("❌ Error al traer el fixture de Neon:", error);
-        setFechasDisponibles(["2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18"]);
+        setFechasDisponibles(["2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14"]);
       } finally {
         setCargando(false);
       }
@@ -127,11 +127,11 @@ export default function MatchFixture({ usuarioId }) {
     );
   }
 
-  const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-15";
+  const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-11";
 
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
-    const pFechaLimpia = String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
+    const pFechaLimpia = String(p.fecha_hora).substring(0, 10);
     if (pFechaLimpia !== fechaActual) return false;
 
     if (vistaActiva === "resultados") {
@@ -148,8 +148,7 @@ export default function MatchFixture({ usuarioId }) {
   } catch (e) {
     fechaFormateadaVisual = fechaActual;
   }
-
-   return (
+  return (
     <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
 
       <style>{`
@@ -174,21 +173,7 @@ export default function MatchFixture({ usuarioId }) {
         }
       `}</style>
 
-      {/* UN SOLO SELECTOR DE VISTAS LIMPIO (CORREGIDO EL DUPLICADO) */}
-      <div className="d-flex justify-content-center mb-3 bg-dark p-1 rounded-3 border border-secondary">
-        <button 
-          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "activos" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
-          onClick={() => setVistaActiva("activos")}
-        >
-          ⌛ ACTIVOS
-        </button>
-        <button 
-          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "resultados" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
-          onClick={() => setVistaActiva("resultados")}
-        >
-          🏁 RESULTADOS
-        </button>
-      </div>
+      {/* SE QUITARON LAS PESTAÑAS DUPLICADAS DE AQUÍ PORQUE YA LAS DIBUJA TU COMPONENTE PADRE */}
 
       {/* Control Navegador de Jornadas */}
       <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-2 rounded-3 border border-secondary shadow-sm" style={{ maxWidth: '500px', margin: '10px auto' }}>
@@ -218,18 +203,18 @@ export default function MatchFixture({ usuarioId }) {
         </button>
       </div>
 
-      {/* Contenedor del listado de tarjetas */}
-      <div className="row g-2 px-1" style={{ maxHeight: '330px', overflowY: 'auto' }}>
+      {/* Listado de Partidos */}
+      <div className="row g-2 px-1 scroll-partidos" style={{ maxHeight: '310px', overflowY: 'auto', overflowX: 'hidden' }}>
         {partidosDelDia.length === 0 ? (
-          <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary">
+          <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-30">
             📅 No hay partidos registrados para esta fecha.
           </div>
         ) : (
           partidosDelDia.map((partido) => {
             let horaStr = "00:00";
-            const strCompleto = String(partido.fecha_hora).replace('T', ' ').trim();
-            if (strCompleto.length >= 16) {
-              horaStr = strCompleto.substring(11, 16);
+            if (partido.fecha_hora) {
+              const d = new Date(partido.fecha_hora);
+              horaStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
             }
 
             const valLocal = golesTemporales[partido.id + "_local"] ?? "";
@@ -241,7 +226,6 @@ export default function MatchFixture({ usuarioId }) {
               if (banderaNeon && String(banderaNeon).trim().length === 2) {
                 return String(banderaNeon).trim().toLowerCase();
               }
-
               const n = String(nombre).trim().toLowerCase()
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
 
@@ -250,38 +234,37 @@ export default function MatchFixture({ usuarioId }) {
               if (n === 'canada') return 'ca';
               if (n === 'nigeria') return 'ng';
               if (n === 'australia') return 'au';
-              if (n === 'suecia') return 'se';
-              if (n === 'irlanda') return 'ie';
-              if (n === 'corea del sur') return 'kr';
-              if (n === 'estados unidos') return 'us';
-              if (n === 'espana') return 'es';
-              if (n === 'marruecos') return 'ma';
+              if (n === 'suecia' || n === 'sweden') return 'se';
+              if (n === 'irlanda' || n === 'republic of ireland') return 'ie';
+              if (n === 'corea del sur' || n === 'south korea') return 'kr';
+              if (n === 'estados unidos' || n === 'usa') return 'us';
+              if (n === 'espana' || n === 'spain') return 'es';
+              if (n === 'marruecos' || n === 'morocco') return 'ma';
               if (n === 'zambia') return 'zm';
               if (n === 'argentina') return 'ar';
-              if (n === 'francia') return 'fr';
-              if (n === 'alemania') return 'de';
-              if (n === 'paises bajos') return 'nl';
-              if (n === 'brasil') return 'br';
-              if (n === 'italia') return 'it';
-              if (n === 'japon') return 'jp';
+              if (n === 'francia' || n === 'france') return 'fr';
+              if (n === 'alemania' || n === 'germany') return 'de';
+              if (n === 'paises bajos' || n === 'netherlands') return 'nl';
+              if (n === 'brasil' || n === 'brazil') return 'br';
+              if (n === 'italia' || n === 'italy') return 'it';
+              if (n === 'japon' || n === 'japan') return 'jp';
               if (n === 'costa rica') return 'cr';
-              if (n === 'belgica') return 'be';
-              if (n === 'croacia') return 'hr';
+              if (n === 'belgica' || n === 'belgium') return 'be';
+              if (n === 'croacia' || n === 'croatia') return 'hr';
               if (n === 'portugal') return 'pt';
               if (n === 'ghana') return 'gh';
               if (n === 'uruguay') return 'uy';
-              if (n === 'inglaterra') return 'gb-eng';
+              if (n === 'inglaterra' || n === 'england') return 'gb-eng';
               if (n === 'colombia') return 'co';
               if (n === 'senegal') return 'sn';
               if (n === 'chile') return 'cl';
-              if (n === 'dinamarca') return 'dk';
+              if (n === 'dinamarca' || n === 'denmark') return 'dk';
               if (n === 'peru') return 'pe';
-              if (n === 'suiza') return 'ch';
+              if (n === 'suiza' || n === 'switzerland') return 'ch';
               if (n === 'paraguay') return 'py';
-              if (n === 'camerun') return 'cm';
+              if (n === 'camerun' || n === 'cameroon') return 'cm';
               if (n === 'venezuela') return 've';
-              if (n === 'ucrania') return 'ua';
-
+              if (n === 'ucrania' || n === 'ukraine') return 'ua';
               return 'un';
             };
 
@@ -289,104 +272,146 @@ export default function MatchFixture({ usuarioId }) {
             const isoV = obtenerCodigoSeguro(partido.visitante, partido.banderaV);
 
             return (
-              <div key={partido.id} className="col-12">
-                <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
-                  <div className="card-body p-2 pb-3">
+              <div key={partido.id} className="col-12 px-2">
+                <div className="card shadow-sm border-0 border-start border-success border-3 bg-dark bg-opacity-60 text-white rounded-3 border border-secondary border-opacity-20 mb-1">
+                  <div className="card-body p-2 font-monospace">
 
-                    <div className="text-center text-secondary mb-1 d-flex justify-content-center align-items-center gap-2" style={{ fontSize: '0.7rem' }}>
-                      <span>GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS</span>
+                    <div className="text-center text-secondary mb-2 d-flex justify-content-center align-items-center gap-2" style={{ fontSize: '0.65rem' }}>
+                      <span>GRUPO {partido.grupo || 'A'} • 🕒 {horaStr} LOCAL</span>
                       {partido.estado === 'en_vivo' && (
-                        <span className="badge bg-danger text-white font-monospace animate-pulse px-1" style={{ fontSize: '0.6rem' }}>• EN VIVO</span>
+                        <span className="badge bg-danger text-white animate-pulse px-1" style={{ fontSize: '0.55rem' }}>• EN VIVO</span>
                       )}
                     </div>
 
-                    <div className="d-flex justify-content-between align-items-center px-1 mb-2">
-
+                    <div className="d-flex justify-content-between align-items-center px-1">
+                      
                       {/* Local */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com/w40/${isoL}.png`}
+                          src={`https://flagcdn.com{isoL}.png`}
                           alt={partido.local}
-                          className="rounded border border-secondary shadow-sm mb-1"
-                          style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                          className="rounded border border-secondary border-opacity-40 shadow-sm mb-1"
+                          style={{ width: '26px', height: '17px', objectFit: 'cover' }}
                         />
-                        <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
+                        <div className="fw-bold text-truncate text-light text-uppercase" style={{ fontSize: '0.72rem' }}>
                           {partido.local}
                         </div>
                       </div>
 
-                      {/* Marcadores e Inputs Reactivos */}
-                      <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
-                        {vistaActiva === "resultados" ? (
-                          <div className="d-flex align-items-center bg-black bg-opacity-40 px-2 py-1 rounded border border-secondary gap-2 fw-bold text-warning" style={{ fontSize: '1.1rem' }}>
-                            <span>{partido.goles_real_local ?? 0}</span>
-                            <span className="text-muted" style={{ fontSize: '0.8rem' }}>-</span>
-                            <span>{partido.goles_real_visitante ?? 0}</span>
-                          </div>
-                        ) : (
-                          <>
-                            <input
-                              type="number"
-                              disabled={partidoBloqueado}
-                              className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
-                              style={{ width: '38px', fontSize: '1rem', height: '34px' }}
-                              value={valLocal}
-                              onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
-                            />
-                            <span className="mx-1 text-secondary fw-bold">-</span>
-                            <input
-                              type="number"
-                              disabled={partidoBloqueado}
-                              className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
-                              style={{ width: '38px', fontSize: '1rem', height: '34px' }}
-                              value={valVisitante}
-                              onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
-                            />
-                          </>
-                        )}
+                      {/* Inputs / Marcador real */}
+                      <div className="d-flex flex-column align-items-center justify-content-center" style={{ width: '30%' }}>
+                        <div className="d-flex align-items-center justify-content-center">
+                          {vistaActiva === "resultados" ? (
+                            <div className="d-flex align-items-center bg-black bg-opacity-50 px-2 py-0.5 rounded border border-secondary border-opacity-40 gap-2 fw-bold text-warning" style={{ fontSize: '1rem' }}>
+                              <span>{partido.goles_real_local ?? 0}</span>
+                              <span className="text-muted" style={{ fontSize: '0.7rem' }}>-</span>
+                              <span>{partido.goles_real_visitante ?? 0}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="number"
+                                disabled={partidoBloqueado}
+                                className="form-control form-control-sm text-center bg-dark text-success fw-bold p-0 border border-secondary"
+                                style={{ width: '34px', fontSize: '0.95rem', height: '30px' }}
+                                value={valLocal}
+                                onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
+                              />
+                              <span className="mx-1 text-secondary fw-bold small">-</span>
+                              <input
+                                type="number"
+                                disabled={partidoBloqueado}
+                                className="form-control form-control-sm text-center bg-dark text-success fw-bold p-0 border border-secondary"
+                                style={{ width: '34px', fontSize: '0.95rem', height: '30px' }}
+                                value={valVisitante}
+                                onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
+                              />
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       {/* Visitante */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com/w40/${isoV}.png`}
+                          src={`https://flagcdn.com{isoV}.png`}
                           alt={partido.visitante}
-                          className="rounded border border-secondary shadow-sm mb-1"
-                          style={{ width: '32px', height: '20px', objectFit: 'cover' }}
+                          className="rounded border border-secondary border-opacity-40 shadow-sm mb-1"  style={{ width: '26px', height: '17px', objectFit: 'cover' }}
                         />
-                        <div className="fw-bold text-truncate text-light" style={{ fontSize: '0.8rem' }}>
+                        <div className="fw-bold text-truncate text-light text-uppercase" style={{ fontSize: '0.72rem' }}>
+                          {partido.local}
+                        </div>
+                      </div>
+
+                      {/* Inputs / Marcador real */}
+                      <div className="d-flex flex-column align-items-center justify-content-center" style={{ width: '30%' }}>
+                        <div className="d-flex align-items-center justify-content-center">
+                          {vistaActiva === "resultados" ? (
+                            <div className="d-flex align-items-center bg-black bg-opacity-50 px-2 py-0.5 rounded border border-secondary border-opacity-40 gap-2 fw-bold text-warning" style={{ fontSize: '1rem' }}>
+                              <span>{partido.goles_real_local ?? 0}</span>
+                              <span className="text-muted" style={{ fontSize: '0.7rem' }}>-</span>
+                              <span>{partido.goles_real_visitante ?? 0}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="number"
+                                disabled={partidoBloqueado}
+                                className="form-control form-control-sm text-center bg-dark text-success fw-bold p-0 border border-secondary"
+                                style={{ width: '34px', fontSize: '0.95rem', height: '30px' }}
+                                value={valLocal}
+                                onChange={(e) => handleCambioGoles(partido.id, 'local', e.target.value)}
+                              />
+                              <span className="mx-1 text-secondary fw-bold small">-</span>
+                              <input
+                                type="number"
+                                disabled={partidoBloqueado}
+                                className="form-control form-control-sm text-center bg-dark text-success fw-bold p-0 border border-secondary"
+                                style={{ width: '34px', fontSize: '0.95rem', height: '30px' }}
+                                value={valVisitante}
+                                onChange={(e) => handleCambioGoles(partido.id, 'visitante', e.target.value)}
+                              />
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Componente Visitante */}
+                      <div className="text-center flex-grow-1" style={{ width: '35%' }}>
+                        <img
+                          src={`https://flagcdn.com{isoV}.png`}
+                          alt={partido.visitante}
+                          className="rounded border border-secondary border-opacity-40 shadow-sm mb-1"
+                          style={{ width: '26px', height: '17px', objectFit: 'cover' }}
+                        />
+                        <div className="fw-bold text-truncate text-light text-uppercase" style={{ fontSize: '0.72rem' }}>
                           {partido.visitante}
                         </div>
                       </div>
 
                     </div>
 
-                    {/* Alerta de marcador en vivo en la pestaña activos */}
+                    {/* Auxiliar en vivo */}
                     {vistaActiva === "activos" && partido.estado === "en_vivo" && (
-                      <div className="text-center text-emerald-400 small font-bold mb-2" style={{ fontSize: '0.75rem' }}>
-                        Marcador Real: {partido.goles_real_local} - {partido.goles_real_visitante}
+                      <div className="text-center text-emerald-400 fw-bold mt-2" style={{ fontSize: '0.7rem' }}>
+                        Marcador Real FIFA: {partido.goles_real_local} - {partido.goles_real_visitante}
                       </div>
                     )}
 
-                    {/* Botón dinámico de Guardar / Bloqueado */}
+                    {/* Botón guardar */}
                     {vistaActiva === "activos" && (
-                      <div className="text-center mt-2 px-4">
+                      <div className="text-center mt-2 px-3">
                         {!partidoBloqueado ? (
                           <button
-                            className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
-                            style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
+                            className="btn btn-sm btn-outline-success w-100 py-0.5 font-monospace fw-bold"
+                            style={{ fontSize: '0.68rem', letterSpacing: '0.2px' }}
                             onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
                             disabled={estaGuardando}
                           >
-                            {estaGuardando ? (
-                              <>
-                                <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                                Guardando...
-                              </>
-                            ) : "💾 GUARDAR PRONÓSTICO"}
+                            {estaGuardando ? "GUARDANDO..." : "💾 GUARDAR PRONÓSTICO"}
                           </button>
                         ) : (
-                          <span className="text-xs text-muted italic bg-black bg-opacity-20 d-block py-1 rounded border border-secondary border-opacity-50">🔒 Apuestas cerradas</span>
+                          <span className="text-muted italic bg-black bg-opacity-30 d-block py-0.5 rounded border border-secondary border-opacity-20" style={{ fontSize: '0.65rem' }}>🔒 APUESTA CERRADA</span>
                         )}
                       </div>
                     )}
