@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api.js';
 
-export default function Leaderboard({ usuarioLogueadoId }) {
+// Corregido: Se unifica la propiedad a 'usuarioId' para mantener consistencia con MatchFixture
+export default function Leaderboard({ usuarioId }) {
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
+
+  // Se convierte a número seguro para evitar problemas de tipos string/int en JS
+  const uidLogueado = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : null;
 
   const obtenerRanking = async () => {
     try {
       const respuesta = await api.get('/ranking');
       setUsuarios(respuesta.data);
     } catch (error) {
-      console.log("Error al cargar la tabla de posiciones.");
+      console.log("❌ Error al cargar la tabla de posiciones desde Render.");
     } finally {
       setCargando(false);
     }
@@ -27,14 +31,14 @@ export default function Leaderboard({ usuarioLogueadoId }) {
     try {
       await api.delete(`/usuarios/${id}`);
       alert("🗑️ ¡Usuario borrado de Neon con éxito!");
-      obtenerRanking();
+      obtenerRanking(); // Recarga la tabla de inmediato tras la baja
     } catch (error) {
       alert(`❌ Error al eliminar: ${error.message}`);
     }
   };
 
   if (cargando) {
-    return <div className="text-center py-4 text-secondary small">🥇 Calculando posiciones globales...</div>;
+    return <div className="text-center py-4 text-secondary small font-monospace">🥇 Calculando posiciones globales...</div>;
   }
 
   return (
@@ -63,7 +67,7 @@ export default function Leaderboard({ usuarioLogueadoId }) {
               if (index === 1) medalla = "🥈";
               if (index === 2) medalla = "🥉";
 
-              const esElMismo = user.id === usuarioLogueadoId;
+              const esElMismo = user.id === uidLogueado;
 
               return (
                 <tr key={user.id} className="border-bottom border-secondary border-opacity-10">

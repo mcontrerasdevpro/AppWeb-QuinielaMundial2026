@@ -18,7 +18,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Verificación y creación estructural en Neon
 try:
     Base.metadata.create_all(bind=engine)
     print("✨ ¡Tablas estructurales verificadas/creadas con éxito en Neon! 🏛️")
@@ -182,7 +181,7 @@ def register_user(user_data: UserCreate, background_tasks: BackgroundTasks, db: 
     }
 
 # ==========================================
-# 4. ENDPOINT DE FIXTURE DE PARTIDOS
+# 4. ENDPOINT DE FIXTURE DE PARTIDOS (MODIFICADO CON GOLES REALES)
 # ==========================================
 @app.get("/matches")
 @app.get("/api/matches")
@@ -192,7 +191,8 @@ def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
     try:
         query = text("""
             SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as "banderaL",
-                   ev.nombre as visitante, ev.bandera_url as "banderaV", p.estado
+                   ev.nombre as visitante, ev.bandera_url as "banderaV", p.estado,
+                   p.goles_real_local, p.goles_real_visitante
             FROM partidos p
             JOIN equipos el ON p.equipo_local_id = el.id
             JOIN equipos ev ON p.equipo_visitante_id = ev.id
@@ -223,7 +223,9 @@ def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
                     "visitante": row["visitante"], 
                     "banderaV": row["banderaV"],
                     "golesL": gL, 
-                    "golesV": gV,
+                    "golesV": gV, 
+                    "goles_real_local": row["goles_real_local"], 
+                    "goles_real_visitante": row["goles_real_visitante"], 
                     "estado": row["estado"]
                 })
             return fixture_completo
@@ -477,23 +479,23 @@ def delete_user(usuario_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error al borrar: {str(e)}")
 
 # ==========================================
-# ENDPOINT DE AUTOMATIZACIÓN (VERSIÓN CORREGIDA DE SEGURIDAD)
+# ENDPOINT DE AUTOMATIZACIÓN (VERSIÓN INTEGRADA PARA CRON-JOB)
 # ==========================================
 @app.post("/api/matches/sync-auto")
 async def sincronizar_partidos_automatizado(db: Session = Depends(get_db)):
-    # 1. Leemos la variable dinámicamente dentro de la función para asegurar su carga en Render
-    api_key_football = os.getenv("FOOTBALL_API_KEY")
+    api_key_football = os.getenv("API_SPORTS_KEY") or os.getenv("FOOTBALL_API_KEY")
     
     if not api_key_football:
         raise HTTPException(
             status_code=500, 
-            detail="Falta configurar la variable FOOTBALL_API_KEY en el entorno."
+            detail="Falta configurar la variable API_SPORTS_KEY en Render."
         )
     
     url = "https://v3.football.api-sports.io/fixtures?league=1&season=2026"  
     
     headers = {
-        "x-apisports-key": api_key_football
+        "x-rapidapi-host": "v3.football.api-sports.io",
+        "x-rapidapi-key": api_key_football
     }
 
     try:
@@ -503,51 +505,88 @@ async def sincronizar_partidos_automatizado(db: Session = Depends(get_db)):
         if respuesta.status_code != 200:
             raise HTTPException(
                 status_code=500, 
-                detail=f"Error de conexión con API-Sports. Código HTTP: {respuesta.status_code}"
+                detail=f"API-Sports retornó código HTTP: {respuesta.status_code}"
             )
             
         datos_externos = respuesta.json().get("response", [])
+        
+        equipos_db = db.query(Equipo).all()
+        equipos_map = {eq.id: eq.nombre for eq in equipos_db}
+        
         partidos_actualizados = 0
+        partidos_creados = 0
 
         for f in datos_externos:
-            status_partido = f["fixture"]["status"]["short"]
-            
-            if status_partido == "FT":
-                goles_local_real = f["goals"]["home"]
-                goles_visitante_real = f["goals"]["away"]                
-                nombre_local_ext = f["teams"]["home"]["name"]
-                nombre_visitante_ext = f["teams"]["away"]["name"]
+            fixture = f.get("fixture", {})
+            teams = f.get("teams", {})
+            goals = f.get("goals", {})
 
-                query_partido = text("""
-                    SELECT p.id FROM partidos p
-                    JOIN equipos el ON p.equipo_local_id = el.id
-                    JOIN equipos ev ON p.equipo_visitante_id = ev.id
-                    WHERE (el.nombre ILIKE :local OR :local ILIKE CONCAT('%', el.nombre, '%'))
-                      AND (ev.nombre ILIKE :visitante OR :visitante ILIKE CONCAT('%', ev.nombre, '%'))
-                      AND p.estado = 'programado'
-                    LIMIT 1
-                """)
-                partido_db = db.execute(
-                    query_partido, 
-                    {"local": nombre_local_ext, "visitante": nombre_visitante_ext}
-                ).mappings().first()
+            api_match_id = fixture.get("id")
+            id_local = teams.get("home", {}).get("id")
+            id_visitante = teams.get("away", {}).get("id")
+            status_short = fixture.get("status", {}).get("short")
 
-                if partido_db:
-                    partido_id = partido_db["id"]
-                    
+            if status_short == "NS":
+                nuevo_estado = "programado"
+            elif status_short in ["1H", "HT", "2H", "ET", "BT", "P"]:
+                nuevo_estado = "en_vivo"
+            elif status_short in ["FT", "AET", "PEN"]:
+                nuevo_estado = "terminado"
+            else:
+                nuevo_estado = "programado"
+
+            for side, t_info in [("home", teams.get("home", {})), ("away", teams.get("away", {}))]:
+                t_id = t_info.get("id")
+                if t_id and t_id not in equipos_map:
+                    nuevo_eq = Equipo(
+                        id=t_id,
+                        nombre=t_info.get("name"),
+                        bandera_url=t_info.get("logo")
+                    )
+                    db.add(nuevo_eq)
+                    db.commit()
+                    equipos_map[t_id] = t_info.get("name")
+
+            fecha_utc = datetime.datetime.fromisoformat(fixture.get("date").replace("+00:00", ""))
+
+            g_local = goals.get("home") if goals.get("home") is not None else 0
+            g_visitante = goals.get("away") if goals.get("away") is not None else 0
+
+            partido_db = db.query(Partido).filter(Partido.id == api_match_id).first()
+
+            if partido_db:
+                if nuevo_estado == "terminado" and partido_db.estado != "terminado":
                     finish_match(
-                        partido_id=partido_id, 
-                        goles_local_real=goles_local_real, 
-                        goles_visitante_real=goles_visitante_real, 
+                        partido_id=api_match_id,
+                        goles_local_real=g_local,
+                        goles_visitante_real=g_visitante,
                         db=db
                     )
-                    partidos_actualizados += 1
+                else:
+                    partido_db.goles_real_local = g_local if nuevo_estado != "programado" else None
+                    partido_db.goles_real_visitante = g_visitante if nuevo_estado != "programado" else None
+                    partido_db.estado = nuevo_estado
+                partidos_actualizados += 1
+            else:
+                nuevo_partido = Partido(
+                    id=api_match_id,
+                    equipo_local_id=id_local,
+                    equipo_visitante_id=id_visitante,
+                    fecha_hora=fecha_utc,
+                    goles_real_local=g_local if nuevo_estado != "programado" else None,
+                    goles_real_visitante=g_visitante if nuevo_estado != "programado" else None,
+                    estado=nuevo_estado
+                )
+                db.add(nuevo_partido)
+                partidos_creados += 1
 
+        db.commit()
         return {
-            "status": "success", 
-            "mensaje": f"⚽ Sincronización exitosa. Se detectaron y cerraron {partidos_actualizados} partidos nuevos en Neon."
+            "status": "success",
+            "mensaje": f"Sincronización completada. {partidos_creados} partidos nuevos añadidos al calendario. {partidos_actualizados} marcadores actualizados en Neon."
         }
 
     except Exception as e:
-        print(f"❌ Fallo en el script de sincronización automática: {e}")
+        db.rollback()
+        print(f"❌ Fallo crítico en sincronización: {e}")
         raise HTTPException(status_code=500, detail=str(e))

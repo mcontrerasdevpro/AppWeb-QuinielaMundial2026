@@ -1,135 +1,118 @@
+import os
+import requests
+from datetime import datetime
 from app.database import SessionLocal
 from app.models.tables import Equipo, Partido
-from sqlalchemy import text
-import datetime
 
-db = SessionLocal()
+API_FIXTURES_URL = "https://api-sports.io"
+HEADERS = {
+    'x-rapidapi-host': "v3.football.api-sports.io",
+    'x-rapidapi-key': os.getenv("API_SPORTS_KEY") 
+}
 
-print("🚨 Limpiando tablas para el despliegue del fixture completo...")
-try:
-    db.execute(text("DELETE FROM pronosticos;"))
-    db.execute(text("DELETE FROM partidos;"))
-    db.execute(text("DELETE FROM equipos;"))
-    db.commit()
-    print("✨ Tablas limpias.")
-except Exception as e:
-    db.rollback()
-    print(f"⚠️ Aviso al limpiar: {e}")
+def mapear_estado(status_short):
+    """Convierte estados de la API a cadenas legibles para tu frontend"""
+    if status_short == "NS":
+        return "programado"
+    elif status_short in ["1H", "HT", "2H", "ET", "BT", "P"]:
+        return "en_vivo"
+    elif status_short in ["FT", "AET", "PEN"]:
+        return "finalizado"
+    return "programado"
 
-print("⚽ Registrando las 48 Selecciones del Mundial 2026...")
-
-try:
-    equipos_reales = [
-        # Grupo A
-        {"nombre": "México", "bandera_url": "🇲🇽", "grupo": "A"},
-        {"nombre": "Ecuador", "bandera_url": "🇪🇨", "grupo": "A"},
-        {"nombre": "Australia", "bandera_url": "🇦🇺", "grupo": "A"},
-        {"nombre": "Suecia", "bandera_url": "🇸🇪", "grupo": "A"},
-        # Grupo B
-        {"nombre": "Canadá", "bandera_url": "🇨🇦", "grupo": "B"},
-        {"nombre": "Nigeria", "bandera_url": "🇳🇬", "grupo": "B"},
-        {"nombre": "Irlanda", "bandera_url": "🇮🇪", "grupo": "B"},
-        {"nombre": "Corea del Sur", "bandera_url": "🇰🇷", "grupo": "B"},
-        # Grupo C
-        {"nombre": "Estados Unidos", "bandera_url": "🇺🇸", "grupo": "C"},
-        {"nombre": "España", "bandera_url": "🇪🇸", "grupo": "C"},
-        {"nombre": "Marruecos", "bandera_url": "🇲🇦", "grupo": "C"},
-        {"nombre": "Zambia", "bandera_url": "🇿🇲", "grupo": "C"},
-        # Grupo D
-        {"nombre": "Argentina", "bandera_url": "🇦🇷", "grupo": "D"},
-        {"nombre": "Francia", "bandera_url": "🇫🇷", "grupo": "D"},
-        {"nombre": "Alemania", "bandera_url": "🇩🇪", "grupo": "D"},
-        {"nombre": "Países Bajos", "bandera_url": "🇳🇱", "grupo": "D"},
-        # Grupo E
-        {"nombre": "Brasil", "bandera_url": "🇧🇷", "grupo": "E"},
-        {"nombre": "Italia", "bandera_url": "🇮🇹", "grupo": "E"},
-        {"nombre": "Japón", "bandera_url": "🇯🇵", "grupo": "E"},
-        {"nombre": "Costa Rica", "bandera_url": "🇨🇷", "grupo": "E"},
-        # Grupo F
-        {"nombre": "Bélgica", "bandera_url": "🇧🇪", "grupo": "F"},
-        {"nombre": "Croacia", "bandera_url": "🇭🇷", "grupo": "F"},
-        {"nombre": "Portugal", "bandera_url": "🇵🇹", "grupo": "F"},
-        {"nombre": "Ghana", "bandera_url": "🇬🇭", "grupo": "F"},
-        # Grupo G al L (Selecciones del Bombo Restante del formato de 48)
-        {"nombre": "Uruguay", "bandera_url": "🇺🇾", "grupo": "G"},
-        {"nombre": "Inglaterra", "bandera_url": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "grupo": "G"},
-        {"nombre": "Colombia", "bandera_url": "🇨🇴", "grupo": "H"},
-        {"nombre": "Senegal", "bandera_url": "🇸🇳", "grupo": "H"},
-        {"nombre": "Chile", "bandera_url": "🇨🇱", "grupo": "I"},
-        {"nombre": "Dinamarca", "bandera_url": "🇩🇰", "grupo": "I"},
-        {"nombre": "Perú", "bandera_url": "🇵🇪", "grupo": "J"},
-        {"nombre": "Suiza", "bandera_url": "🇨🇭", "grupo": "J"},
-        {"nombre": "Paraguay", "bandera_url": "🇵🇾", "grupo": "K"},
-        {"nombre": "Camerún", "bandera_url": "🇨🇲", "grupo": "K"},
-        {"nombre": "Venezuela", "bandera_url": "🇻🇪", "grupo": "L"},
-        {"nombre": "Ucrania", "bandera_url": "🇺🇦", "grupo": "L"}
-    ]
+def sincronizar_mundial():
+    db = SessionLocal()
+    print("📡 Conectando con API-Sports para obtener los datos reales...")
     
-    for eq in equipos_reales:
-        nuevo_equipo = Equipo(nombre=eq["nombre"], bandera_url=eq["bandera_url"], grupo=eq["grupo"])
-        db.add(nuevo_equipo)
-    db.commit()
+    try:
+        response = requests.get(API_FIXTURES_URL, headers=HEADERS)
+        if response.status_code != 200:
+            print(f"❌ Error de API: {response.status_code}")
+            return
+        partidos_api = response.json().get("response", [])
+        print(f"⚽ Se encontraron {len(partidos_api)} partidos en la API.")
+    except Exception as e:
+        print(f"❌ Error de red: {e}")
+        return
 
-    def obtener_id(nombre):
-        return db.query(Equipo).filter(Equipo.nombre == nombre).first().id
+    try:
+        print("📥 Verificando y registrando equipos en Neon...")
+        for item in partidos_api:
+            teams = item.get("teams", {})
+            for side in ["home", "away"]:
+                t_info = teams.get(side, {})
+                t_id = t_info.get("id")
+                t_name = t_info.get("name")
+                t_logo = t_info.get("logo")
 
-    # 📅 CALENDARIO COMPLETO CRONOLÓGICO DE LA FASE DE GRUPOS
-    partidos_fixture = [
-        # Lunes 15 de Junio
-        {"l": "México", "v": "Ecuador", "f": datetime.datetime(2026, 6, 15, 18, 0)},
-        {"l": "Canadá", "v": "Nigeria", "f": datetime.datetime(2026, 6, 15, 21, 30)},
-        # Martes 16 de Junio
-        {"l": "Estados Unidos", "v": "España", "f": datetime.datetime(2026, 6, 16, 16, 0)},
-        {"l": "Irlanda", "v": "Corea del Sur", "f": datetime.datetime(2026, 6, 16, 20, 0)},
-        # Miércoles 17 de Junio
-        {"l": "Argentina", "v": "Francia", "f": datetime.datetime(2026, 6, 17, 15, 0)},
-        {"l": "Alemania", "v": "Países Bajos", "f": datetime.datetime(2026, 6, 17, 20, 0)},
-        # Jueves 18 de Junio
-        {"l": "Brasil", "v": "Italia", "f": datetime.datetime(2026, 6, 18, 14, 0)},
-        {"l": "Japón", "v": "Costa Rica", "f": datetime.datetime(2026, 6, 18, 18, 0)},
-        {"l": "Bélgica", "v": "Croacia", "f": datetime.datetime(2026, 6, 18, 21, 0)},
-        # Viernes 19 de Junio (Jornada 2 - México)
-        {"l": "México", "v": "Australia", "f": datetime.datetime(2026, 6, 19, 16, 0)},
-        {"l": "Ecuador", "v": "Suecia", "f": datetime.datetime(2026, 6, 19, 20, 0)},
-        # Sábado 20 de Junio
-        {"l": "Portugal", "v": "Ghana", "f": datetime.datetime(2026, 6, 20, 15, 0)},
-        {"l": "Uruguay", "v": "Inglaterra", "f": datetime.datetime(2026, 6, 20, 19, 0)},
-        # Domingo 21 de Junio
-        {"l": "Colombia", "v": "Senegal", "f": datetime.datetime(2026, 6, 21, 16, 0)},
-        {"l": "Chile", "v": "Dinamarca", "f": datetime.datetime(2026, 6, 21, 20, 0)},
-        # Lunes 22 de Junio
-        {"l": "Estados Unidos", "v": "Marruecos", "f": datetime.datetime(2026, 6, 22, 17, 0)},
-        {"l": "España", "v": "Zambia", "f": datetime.datetime(2026, 6, 22, 21, 0)},
-        # Martes 23 de Junio
-        {"l": "Argentina", "v": "Alemania", "f": datetime.datetime(2026, 6, 23, 15, 0)},
-        {"l": "Francia", "v": "Países Bajos", "f": datetime.datetime(2026, 6, 23, 19, 0)},
-        # Miércoles 24 de Junio
-        {"l": "Brasil", "v": "Japón", "f": datetime.datetime(2026, 6, 24, 16, 0)},
-        {"l": "Italia", "v": "Costa Rica", "f": datetime.datetime(2026, 6, 24, 20, 0)},
-        # Jueves 25 de Junio (Cierre Jornada 3)
-        {"l": "México", "v": "Suecia", "f": datetime.datetime(2026, 6, 25, 18, 0)},
-        {"l": "Ecuador", "v": "Australia", "f": datetime.datetime(2026, 6, 25, 18, 0)},
-        # Viernes 26 de Junio
-        {"l": "Perú", "v": "Suiza", "f": datetime.datetime(2026, 6, 26, 15, 0)},
-        {"l": "Paraguay", "v": "Camerún", "f": datetime.datetime(2026, 6, 26, 19, 0)},
-        # Sábado 27 de Junio (Último día de Fase de Grupos)
-        {"l": "Venezuela", "v": "Ucrania", "f": datetime.datetime(2026, 6, 27, 16, 0)}
-    ]
+                if t_id:
+                    
+                    db_team = db.query(Equipo).filter(Equipo.id == t_id).first()
+                    if not db_team:
+                        nuevo_equipo = Equipo(
+                            id=t_id,
+                            nombre=t_name,
+                            bandera_url=t_logo,
+                            grupo=None
+                        )
+                        db.add(nuevo_equipo)
+        db.commit()
 
-    for part in partidos_fixture:
-        nuevo_partido = Partido(
-            equipo_local_id=obtener_id(part["l"]), 
-            equipo_visitante_id=obtener_id(part["v"]), 
-            fecha_hora=part["f"], 
-            estado="programado"
-        )
-        db.add(nuevo_partido)
-            
-    db.commit()
-    print("🏆 ¡HISTÓRICO! Toda la fase de grupos del Mundial 2026 está inyectada en Neon.")
+        equipos_db = db.query(Equipo).all()
+        equipos_ids = {eq.id for eq in equipos_db}
 
-except Exception as e:
-    db.rollback()
-    print(f"❌ Error al poblar: {e}")
-finally:
-    db.close()
+        print("🔄 Sincronizando partidos, fechas y resultados reales...")
+        actualizados = 0
+        insertados = 0
+
+        for item in partidos_api:
+            fixture = item.get("fixture", {})
+            teams = item.get("teams", {})
+            goals = item.get("goals", {})
+            api_match_id = fixture.get("id")
+            id_local = teams.get("home", {}).get("id")
+            id_visitante = teams.get("away", {}).get("id")
+
+            if id_local not in equipos_ids or id_visitante not in equipos_ids:
+                continue
+
+            fecha_utc = datetime.fromisoformat(fixture.get("date").replace("+00:00", ""))            
+            goles_l = goals.get("home") if goals.get("home") is not None else 0
+            goles_v = goals.get("away") if goals.get("away") is not None else 0
+            nuevo_estado = mapear_estado(fixture.get("status", {}).get("short"))
+
+            db_match = db.query(Partido).filter(Partido.id == api_match_id).first()
+
+            if db_match:
+                db_match.goles_local = goles_l
+                db_match.goles_visitante = goles_v
+                db_match.estado = nuevo_estado
+                actualizados += 1
+            else:
+                nuevo_partido = Partido(
+                    id=api_match_id, 
+                    equipo_local_id=id_local,
+                    equipo_visitante_id=id_visitante,
+                    fecha_hora=fecha_utc,
+                    goles_local=goles_l if nuevo_estado != "programado" else None,
+                    goles_visitante=goles_v if nuevo_estado != "programado" else None,
+                    estado=nuevo_estado
+                )
+                db.add(nuevo_partido)
+                insertados += 1
+
+        db.commit()
+        print(f"✨ Transacción en Neon completada de forma limpia.")
+        print(f"📊 Resumen -> Nuevos partidos agregados: {insertados} | Partidos actualizados: {actualizados}")
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error durante la actualización de la BD: {e}")
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    if not os.getenv("API_SPORTS_KEY"):
+        print("🚨 Error: Falta la variable de entorno API_SPORTS_KEY en tu entorno.")
+    else:
+        sincronizar_mundial()

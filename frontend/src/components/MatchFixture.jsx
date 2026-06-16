@@ -23,7 +23,7 @@ export default function MatchFixture({ usuarioId }) {
           setPartidosTotales(respuesta.data);
 
           const fechasUnicas = [...new Set(respuesta.data.map(p => {
-            if (!p.fecha_hora) return "2026-06-11";
+            if (!p.fecha_hora) return "2026-06-15";
             return String(p.fecha_hora).replace('T', ' ').trim().substring(0, 10);
           }))].sort();
 
@@ -37,12 +37,12 @@ export default function MatchFixture({ usuarioId }) {
           });
           setGolesTemporales(estadoInicialGoles);
         } else {
-          setFechasDisponibles(["2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14"]);
+          setFechasDisponibles(["2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18"]);
           setIndiceFecha(0);
         }
       } catch (error) {
         console.error("❌ Error al traer el fixture de Neon:", error);
-        setFechasDisponibles(["2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14"]);
+        setFechasDisponibles(["2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18"]);
       } finally {
         setCargando(false);
       }
@@ -70,12 +70,11 @@ export default function MatchFixture({ usuarioId }) {
     const partidoActual = partidosTotales.find(p => p.id === partidoId);
 
     if (partidoActual && partidoActual.fecha_hora) {
-      const ahora = new Date(); // Hora actual del dispositivo
+      const ahora = new Date(); 
       const horaPartido = new Date(partidoActual.fecha_hora);
-
       const diferenciaMinutos = (horaPartido - ahora) / (1000 * 60);
 
-      if (diferenciaMinutos < 10) {
+      if (partidoActual.estado === 'en_vivo' || partidoActual.estado === 'terminado' || diferenciaMinutos < 10) {
         alert("⚠️ ¡Apuesta cerrada! El sistema bloquea las modificaciones 10 minutos antes del partido. 🚫");
         return;
       }
@@ -123,7 +122,7 @@ export default function MatchFixture({ usuarioId }) {
     );
   }
 
-  const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-11";
+  const fechaActual = fechasDisponibles[indiceFecha] || "2026-06-15";
 
   const partidosDelDia = partidosTotales.filter(p => {
     if (!p.fecha_hora) return false;
@@ -131,10 +130,10 @@ export default function MatchFixture({ usuarioId }) {
     if (pFechaLimpia !== fechaActual) return false;
 
     if (vistaActiva === "resultados") {
-      return p.goles_real_l !== null && p.goles_real_v !== null && p.goles_real_l !== undefined;
+      return p.estado === "terminado" || p.goles_real_local !== null;
     }
 
-    return p.goles_real_l === null || p.goles_real_l === undefined;
+    return p.estado === "programado" || p.estado === "en_vivo";
   });
 
   let fechaFormateadaVisual = fechaActual;
@@ -144,6 +143,7 @@ export default function MatchFixture({ usuarioId }) {
   } catch (e) {
     fechaFormateadaVisual = fechaActual;
   }
+
   return (
     <div className="p-1 text-white font-monospace" style={{ maxWidth: '100%' }}>
 
@@ -158,6 +158,23 @@ export default function MatchFixture({ usuarioId }) {
         }
       `}</style>
 
+      {/* Selector de vistas superiores (Activos / Resultados) */}
+      <div className="d-flex justify-content-center mb-3 bg-dark p-1 rounded-3 border border-secondary">
+        <button 
+          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "activos" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
+          onClick={() => setVistaActiva("activos")}
+        >
+          ⌛ ACTIVOS
+        </button>
+        <button 
+          className={`btn btn-sm flex-fill fw-bold ${vistaActiva === "resultados" ? "btn-warning text-dark" : "btn-dark text-secondary"}`}
+          onClick={() => setVistaActiva("resultados")}
+        >
+          🏁 RESULTADOS
+        </button>
+      </div>
+
+      {/* Navegación por jornadas */}
       <div className="d-flex justify-content-between align-items-center mb-3 bg-dark bg-opacity-70 p-3 rounded-3 border border-secondary shadow">
         <button
           className="btn btn-success px-3 py-2 fw-bold text-white border border-light border-opacity-20 shadow-sm"
@@ -187,6 +204,7 @@ export default function MatchFixture({ usuarioId }) {
         </button>
       </div>
 
+      {/* Contenedor del listado de tarjetas */}
       <div className="row g-2 px-1" style={{ maxHeight: '330px', overflowY: 'auto' }}>
         {partidosDelDia.length === 0 ? (
           <div className="text-center py-4 text-muted small bg-dark bg-opacity-50 rounded-3 border border-secondary">
@@ -203,6 +221,7 @@ export default function MatchFixture({ usuarioId }) {
             const valLocal = golesTemporales[partido.id + "_local"] ?? "";
             const valVisitante = golesTemporales[partido.id + "_visitante"] ?? "";
             const estaGuardando = guardandoId === partido.id;
+            const partidoBloqueado = partido.estado === 'en_vivo' || partido.estado === 'terminado';
 
             const obtenerCodigoSeguro = (nombre, banderaNeon) => {
               if (banderaNeon && String(banderaNeon).trim().length === 2) {
@@ -210,7 +229,7 @@ export default function MatchFixture({ usuarioId }) {
               }
 
               const n = String(nombre).trim().toLowerCase()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Quita tildes (México -> mexico)
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
 
               if (n === 'mexico') return 'mx';
               if (n === 'ecuador') return 'ec';
@@ -260,8 +279,11 @@ export default function MatchFixture({ usuarioId }) {
                 <div className="card shadow border-0 border-start border-success border-3 bg-dark bg-opacity-50 text-white rounded-3 border border-secondary">
                   <div className="card-body p-2 pb-3">
 
-                    <div className="text-center text-secondary mb-1" style={{ fontSize: '0.7rem' }}>
-                      GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS
+                    <div className="text-center text-secondary mb-1 d-flex justify-content-center align-items-center gap-2" style={{ fontSize: '0.7rem' }}>
+                      <span>GRUPO {partido.grupo || 'U'} • 🕒 {horaStr} HS</span>
+                      {partido.estado === 'en_vivo' && (
+                        <span className="badge bg-danger text-white font-monospace animate-pulse px-1" style={{ fontSize: '0.6rem' }}>• EN VIVO</span>
+                      )}
                     </div>
 
                     <div className="d-flex justify-content-between align-items-center px-1 mb-2">
@@ -269,7 +291,7 @@ export default function MatchFixture({ usuarioId }) {
                       {/* Local */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com/w40/${isoL}.png`}
+                          src={`https://flagcdn.com{isoL}.png`}
                           alt={partido.local}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -279,7 +301,7 @@ export default function MatchFixture({ usuarioId }) {
                         </div>
                       </div>
 
-                      {/* INPUTS DE MARCADORES INTEGRADOS */}
+                      {/* Marcadores e Inputs Reactivos */}
                       <div className="d-flex align-items-center justify-content-center px-1" style={{ width: '30%' }}>
                         {vistaActiva === "resultados" ? (
                           <div className="d-flex align-items-center bg-black bg-opacity-40 px-2 py-1 rounded border border-secondary gap-2 fw-bold text-warning" style={{ fontSize: '1.1rem' }}>
@@ -291,6 +313,7 @@ export default function MatchFixture({ usuarioId }) {
                           <>
                             <input
                               type="number"
+                              disabled={partidoBloqueado}
                               className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
                               style={{ width: '38px', fontSize: '1rem', height: '34px' }}
                               value={valLocal}
@@ -299,6 +322,7 @@ export default function MatchFixture({ usuarioId }) {
                             <span className="mx-1 text-secondary fw-bold">-</span>
                             <input
                               type="number"
+                              disabled={partidoBloqueado}
                               className="form-control form-control-sm text-center bg-dark text-success fw-bold p-1 border border-secondary"
                               style={{ width: '38px', fontSize: '1rem', height: '34px' }}
                               value={valVisitante}
@@ -311,7 +335,7 @@ export default function MatchFixture({ usuarioId }) {
                       {/* Visitante */}
                       <div className="text-center flex-grow-1" style={{ width: '35%' }}>
                         <img
-                          src={`https://flagcdn.com/w40/${isoV}.png`}
+                          src={`https://flagcdn.com{isoV}.png`}
                           alt={partido.visitante}
                           className="rounded border border-secondary shadow-sm mb-1"
                           style={{ width: '32px', height: '20px', objectFit: 'cover' }}
@@ -323,22 +347,33 @@ export default function MatchFixture({ usuarioId }) {
 
                     </div>
 
-                    {/* EL BOTÓN SOLO APARECE EN LA PESTAÑA ACTIVOS */}
+                    {/* Alerta de marcador en vivo en la pestaña activos */}
+                    {vistaActiva === "activos" && partido.estado === "en_vivo" && (
+                      <div className="text-center text-emerald-400 small font-bold mb-2" style={{ fontSize: '0.75rem' }}>
+                        Marcador Real: {partido.goles_real_local} - {partido.goles_real_visitante}
+                      </div>
+                    )}
+
+                    {/* Botón dinámico de Guardar / Bloqueado */}
                     {vistaActiva === "activos" && (
                       <div className="text-center mt-2 px-4">
-                        <button
-                          className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
-                          style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
-                          onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
-                          disabled={estaGuardando}
-                        >
-                          {estaGuardando ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                              Guardando...
-                            </>
-                          ) : "💾 GUARDAR PRONÓSTICO"}
-                        </button>
+                        {!partidoBloqueado ? (
+                          <button
+                            className="btn btn-outline-success btn-sm w-100 py-1 font-monospace fw-bold"
+                            style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}
+                            onClick={() => guardarPronosticoEnBaseDeDatos(partido.id)}
+                            disabled={estaGuardando}
+                          >
+                            {estaGuardando ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                                Guardando...
+                              </>
+                            ) : "💾 GUARDAR PRONÓSTICO"}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted italic bg-black bg-opacity-20 d-block py-1 rounded border border-secondary border-opacity-50">🔒 Apuestas cerradas</span>
+                        )}
                       </div>
                     )}
 
