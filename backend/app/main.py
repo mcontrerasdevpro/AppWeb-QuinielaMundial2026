@@ -1,13 +1,16 @@
-from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+import os
+import datetime 
+from typing import List
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from typing import List
 from pydantic import BaseModel
-from app.database import get_db
-from app.models.tables import Usuario, Partido, Equipo, Pronostico
 from dateutil import parser
-import datetime 
+
+from app.database import get_db, engine
+from app.models.tables import Usuario, Partido, Equipo, Pronostico, Base
 
 app = FastAPI(
     title="API Quiniela Mundial 2026",
@@ -15,9 +18,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-from app.database import engine
-from app.models.tables import Base
-
+# Verificación y creación estructural en Neon
 try:
     Base.metadata.create_all(bind=engine)
     print("✨ ¡Tablas estructurales verificadas/creadas con éxito en Neon! 🏛️")
@@ -32,6 +33,58 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==========================================
+# CONFIGURACIÓN DE CORREO (FASTAPI-MAIL)
+# ==========================================
+mail_config = ConnectionConfig(
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_PORT=int(os.getenv("MAIL_PORT", 465)),
+    MAIL_SERVER=os.getenv("MAIL_SERVER", "://gmail.com"),
+    MAIL_STARTTLS=False,
+    MAIL_SSL_TLS=True,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True
+)
+
+def enviar_email_confirmacion(email: str, usuario: str):
+    html_content = f"""
+    <html>
+        <body style="font-family: sans-serif; background-color: #06140d; margin: 0; padding: 40px; color: #f8fafc;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #111a14; border: 1px solid #198754; border-radius: 15px; padding: 30px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                <div style="font-size: 50px; margin-bottom: 10px;">🏆</div>
+                <h1 style="color: #28a745; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;">
+                    ¡Bienvenido a la Quiniela!
+                </h1>
+                <p style="font-size: 18px; color: #e2e8f0; line-height: 1.6;">
+                    ¡Hola, <strong style="color: #28a745;">{usuario}</strong>! Tu cuenta ha sido registrada con éxito para el **Mundial 2026**.
+                </p>
+                <div style="margin: 30px 0; padding: 15px; background-color: #0b0f0d; border-left: 4px solid #28a745; border-radius: 4px; text-align: left;">
+                    <p style="margin: 0; font-size: 14px; color: #a0aec0;">📍 <strong>Usuario de acceso:</strong></p>
+                    <p style="margin: 5px 0 0 0; font-size: 15px;">{email}</p>
+                </div>
+                <p style="font-size: 15px; color: #a0aec0; margin-bottom: 30px; line-height: 1.5;">
+                    Ya puedes ingresar al estadio virtual, guardar tus pronósticos en tiempo real y competir contra todos tus amigos.
+                </p>
+                <div style="background-color: #198754; color: #000000; font-weight: bold; text-transform: uppercase; padding: 12px 35px; border-radius: 8px; display: inline-block;">
+                    ⚽ ¡A jugar!
+                </div>
+            </div>
+        </body>
+    </html>
+    """
+    message = MessageSchema(
+        subject="🏆 Confirmación de Registro - Quiniela Mundial 2026",
+        recipients=[email],
+        body=html_content,
+        subtype=MessageType.html
+    )
+    fm = FastMail(mail_config)
+    fm.send_message(message)
+    # ==========================================
+# MODELOS PYDANTIC
+# ==========================================
 class UserCreate(BaseModel):
     nombre: str
     email: str
@@ -47,6 +100,9 @@ class PredictionCreate(BaseModel):
     goles_local_pronostico: int
     goles_visitante_pronostico: int
 
+# ==========================================
+# GESTOR WEBSOCKET
+# ==========================================
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -68,7 +124,9 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# ==========================================
 # 1. ENDPOINT RAIZ
+# ==========================================
 @app.get("/")
 def read_root():
     return {
@@ -77,7 +135,9 @@ def read_root():
         "mensaje": "¡Servidor FastAPI encendido con éxito absoluto! ⚽🔥"
     }
 
+# ==========================================
 # 2. ENDPOINT DE INICIO DE SESIÓN (SIGN IN)
+# ==========================================
 @app.post("/auth/login")      
 @app.post("/api/auth/login")  
 def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
@@ -95,9 +155,11 @@ def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
         "usuario": usuario.nombre
     }
 
-# 3. ENDPOINT DE REGISTRO
+# ==========================================
+# 3. ENDPOINT DE REGISTRO (CON EMAIL INYECTADO)
+# ==========================================
 @app.post("/auth/register", status_code=201)
-def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+def register_user(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     email_exists = db.query(Usuario).filter(Usuario.email == user_data.email).first() 
     if email_exists:
         raise HTTPException(status_code=400, detail="El correo ya existe.")
@@ -110,13 +172,18 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
+    
+    background_tasks.add_task(enviar_email_confirmacion, nuevo_usuario.email, nuevo_usuario.nombre)
+    
     return {
         "status": "success", 
         "usuario": nuevo_usuario.nombre,
         "id": nuevo_usuario.id
     }
 
-# 4. ENDPOINT DE FIXTURE DE PARTIDOS (CORREGIDO PARA PRODUCCIÓN)
+# ==========================================
+# 4. ENDPOINT DE FIXTURE DE PARTIDOS
+# ==========================================
 @app.get("/matches")
 @app.get("/api/matches")
 @app.get("/match")
@@ -125,7 +192,7 @@ def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
     try:
         query = text("""
             SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as "banderaL",
-                   ev.nombre as visitante, ev.bandera_url as "banderaV"
+                   ev.nombre as visitante, ev.bandera_url as "banderaV", p.estado
             FROM partidos p
             JOIN equipos el ON p.equipo_local_id = el.id
             JOIN equipos ev ON p.equipo_visitante_id = ev.id
@@ -156,7 +223,8 @@ def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
                     "visitante": row["visitante"], 
                     "banderaV": row["banderaV"],
                     "golesL": gL, 
-                    "golesV": gV
+                    "golesV": gV,
+                    "estado": row["estado"]
                 })
             return fixture_completo
             
@@ -165,17 +233,21 @@ def get_matches(usuario_id: int = 1, db: Session = Depends(get_db)):
         
     return []
 
-# 4.2 ENDPOINT DE PARTIDOS TERMINADOS (NEON)
+# ==========================================
+# 4.2 ENDPOINT DE PARTIDOS TERMINADOS (CORREGIDO PARA NEON)
+# ==========================================
 @app.get("/matches/finished")
 @app.get("/api/matches/finished")
 def get_finished_matches(db: Session = Depends(get_db)):
     try:
+        # CORREGIDO: Nombres de columnas de la tabla 'partidos' alineados con Neon
         query = text("""
-            SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as banderaL,
-                   ev.nombre as visitante, ev.bandera_url as banderaV
+            SELECT p.id, el.grupo, p.fecha_hora, el.nombre as local, el.bandera_url as "banderaL",
+                   ev.nombre as visitante, ev.bandera_url as "banderaV", p.goles_real_local, p.goles_real_visitante, p.estado
             FROM partidos p
-            JOIN equipos el ON p.equipo_local_id_equipo_id = el.id
-            JOIN equipos ev ON p.equipo_visitante_id_equipo_id = ev.id
+            JOIN equipos el ON p.equipo_local_id = el.id
+            JOIN equipos ev ON p.equipo_visitante_id = ev.id
+            WHERE p.estado = 'terminado' OR p.goles_real_local IS NOT NULL
             ORDER BY p.fecha_hora ASC
         """)
         result = db.execute(query).mappings().all()
@@ -196,10 +268,11 @@ def get_finished_matches(db: Session = Depends(get_db)):
                     "fecha": fecha_formateada,
                     "local": row["local"], 
                     "banderaL": row["banderaL"], 
-                    "golesL": row.get("goles_local", 0),  
+                    "goles_real_local": row.get("goles_real_local", 0),  
+                    "goles_real_visitante": row.get("goles_real_visitante", 0),
                     "visitante": row["visitante"], 
                     "banderaV": row["banderaV"], 
-                    "golesV": row.get("goles_visitante", 0)  
+                    "estado": row["estado"]
                 })
             return fixture_terminado
             
@@ -208,7 +281,9 @@ def get_finished_matches(db: Session = Depends(get_db)):
         
     return []
 
+# ==========================================
 # 5. ENDPOINT DE GUARDADO DE PRONÓSTICOS
+# ==========================================
 @app.post("/predictions", status_code=201)
 @app.post("/api/predictions", status_code=201)
 def save_prediction(data: PredictionCreate, db: Session = Depends(get_db)):
@@ -237,7 +312,9 @@ def save_prediction(data: PredictionCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error en Neon: {str(e)}")
 
+# ==========================================
 # 5.2 ENDPOINT DE LECTURA DE PRONÓSTICOS
+# ==========================================
 @app.get("/predictions/{usuario_id}")
 @app.get("/api/predictions/{usuario_id}")
 def get_user_predictions(usuario_id: int, db: Session = Depends(get_db)):
@@ -253,7 +330,9 @@ def get_user_predictions(usuario_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer de Neon: {str(e)}")
 
+# ==========================================
 # 6. CANAL WEBSOCKET
+# ==========================================
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -266,7 +345,9 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception:
         manager.disconnect(websocket)
 
-# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN 
+# ==========================================
+# 7. MOTOR DE PUNTOS Y ACTUALIZACIÓN AUTOMÁTICA
+# ==========================================
 @app.post("/matches/{partido_id}/finish")
 @app.post("/api/matches/{partido_id}/finish")
 def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: int, db: Session = Depends(get_db)):
@@ -275,9 +356,10 @@ def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: i
         if not partido:
             raise HTTPException(status_code=404, detail="Partido no encontrado.")
         
-        partido.estado = "finalizado"
-        partido.goles_local = goles_local_real       
-        partido.goles_visitante = goles_visitante_real 
+        # CORREGIDO: Cambiado a 'terminado' e inyectando las columnas reales de Neon
+        partido.estado = "terminado"
+        partido.goles_real_local = goles_local_real       
+        partido.goles_real_visitante = goles_visitante_real 
         db.commit()
 
         pronosticos = db.query(Pronostico).filter(Pronostico.partido_id == partido_id).all()
@@ -303,14 +385,16 @@ def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: i
                 usuario.puntos += puntos_ganados
 
         db.commit()
-        return {"status": "success", "mensaje": f"🏁 ¡Partido {partido_id} finalizado con marcador {goles_local_real}-{goles_visitante_real}!"}
+        return {"status": "success", "mensaje": f"🏁 ¡Partido {partido_id} finalizado y automatizado con marcador {goles_local_real}-{goles_visitante_real}!"}
         
     except Exception as e:
         db.rollback()
         print(f"❌ Error en finish_match: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==========================================
 # 7.2 ENDPOINT PARA EXPONER EL RANKING EN VIVO
+# ==========================================
 @app.get("/ranking")
 @app.get("/api/ranking")
 def get_ranking(db: Session = Depends(get_db)):
@@ -330,7 +414,7 @@ def get_ranking(db: Session = Depends(get_db)):
         return [{"id": 1, "nombre": "Survi", "puntos": 0}]
     
 # ==========================================
-# 8. MOTOR DE ESTADÍSTICAS GLOBALES (NEON)
+# 8. MOTOR DE ESTADÍSTICAS GLOBALES
 # ==========================================
 @app.get("/stats")
 @app.get("/api/stats")
@@ -367,7 +451,7 @@ def get_global_stats(db: Session = Depends(get_db)):
         return {"total_predictions": 0, "average_goals": 0.0, "tendencies": {"local": 33, "draw": 34, "away": 33}}
     
 # ==========================================
-# 9. ENDPOINT PARA ELIMINAR UN USUARIO (NEON)
+# 9. ENDPOINT PARA ELIMINAR UN USUARIO
 # ==========================================
 @app.delete("/usuarios/{usuario_id}")
 @app.delete("/api/usuarios/{usuario_id}")
@@ -383,4 +467,3 @@ def delete_user(usuario_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al borrar: {str(e)}")
-    
