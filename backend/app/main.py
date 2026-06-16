@@ -393,54 +393,33 @@ def finish_match(partido_id: int, goles_local_real: int, goles_visitante_real: i
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
-# 7.2 ENDPOINT PARA CALCULAR EL RANKING EN TIEMPO REAL SEGÚN APUESTAS (CORREGIDO)
+# 7.2 ENDPOINT DE RANKING TOTALMENTE INCLUSIVO (APARECEN TODOS)
 # ==========================================
 @app.get("/ranking")
 @app.get("/api/ranking")
 def get_ranking(db: Session = Depends(get_db)):
     try:
         usuarios_db = db.query(Usuario).all()
-        
-        partidos_terminados = db.query(Partido).filter(Partido.estado == "terminado").all()
-        partidos_map = {p.id: (p.goles_real_local, p.goles_real_visitante) for p in partidos_terminados}
-
         ranking_final = []
-
+        
         for u in usuarios_db:
-            puntos_totales = 0
-            
-            pronosticos_usuario = db.query(Pronostico).filter(Pronostico.usuario_id == u.id).all()
-            
-            for p in pronosticos_usuario:
-                if p.partido_id in partidos_map:
-                    goles_local_real, goles_visitante_real = partidos_map[p.partido_id]
-                    
-                    gL_pronostico = getattr(p, "goles_local_pronostico", 0)
-                    gV_pronostico = getattr(p, "goles_visitante_pronostico", 0)
-                    
-                    if gL_pronostico == goles_local_real and gV_pronostico == goles_visitante_real:
-                        puntos_totales += 3
-                    else:
-                        tendencia_real = goles_local_real - goles_visitante_real
-                        tendencia_pronostico = gL_pronostico - gV_pronostico
-                        
-                        if (tendencia_real > 0 and tendencia_pronostico > 0) or \
-                           (tendencia_real < 0 and tendencia_pronostico < 0) or \
-                           (tendencia_real == 0 and tendencia_pronostico == 0):
-                            puntos_totales += 1
-
+            puntos_actuales = getattr(u, 'puntos', 0)
+            if puntos_actuales is None:
+                puntos_actuales = 0
+                
             ranking_final.append({
                 "id": u.id,
                 "nombre": u.nombre,
-                "puntos": puntos_totales
+                "puntos": puntos_actuales
             })
-
+            
         ranking_final.sort(key=lambda x: x["puntos"], reverse=True)
         return ranking_final
-
+        
     except Exception as e:
-        print(f"⚠️ Alerta en cálculo dinámico de ranking: {e}")
-        return [{"id": 1, "nombre": "Survi", "puntos": 0}]
+        print(f"⚠️ Alerta en ranking inclusivo: {e}")
+        usuarios_de_emergencia = db.query(Usuario).all()
+        return [{"id": u.id, "nombre": u.nombre, "puntos": 0} for u in usuarios_de_emergencia]
     
 # ==========================================
 # 8. MOTOR DE ESTADÍSTICAS GLOBALES
